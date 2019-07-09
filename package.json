@@ -5,7 +5,7 @@
 	"publisher": "usama8800",
 	"repository": {
 		"type": "git",
-		""
+		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
 	"version": "0.0.1",
 	"engines": {

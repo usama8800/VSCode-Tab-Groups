@@ -23,6 +23,19 @@ export function activate(context: vscode.ExtensionContext) {
 			const group: Group = { list: openEditors.map(e => e.document).filter(e => e), name };
 			groups.push(group);
 		}),
+		vscode.commands.registerCommand('extension.clearAndSaveGroup', async () => {
+			let name = await vscode.window.showInputBox({
+				placeHolder: 'Enter name for group or empty for default name'
+			});
+			if (name === undefined) { return; }
+			name = name.trim();
+			if (name === '') { name = `Group${groups.length}`; }
+
+			const openEditors = await getListOfEditors();
+			const group: Group = { list: openEditors.map(e => e.document).filter(e => e), name };
+			groups.push(group);
+			await closeAllEditors();
+		}),
 		vscode.commands.registerCommand('extension.restoreGroup', async () => {
 			if (groups.length === 0) {
 				vscode.window.showInformationMessage("No saved groups");

@@ -5,4 +5,4 @@ This is an extension for vscode. It allows you to
 
 # Usage
 
-You can open the command pallette and search "save tab group" or "restore tab group" or "clean and restore tab group"
+You can open the command pallette and search "save tab group", "save tab group and close all tabs", "restore tab group" or "restore tab group and close all others"

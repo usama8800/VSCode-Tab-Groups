@@ -19,9 +19,11 @@ export class ActiveEditorTracker extends Disposable {
         this._disposable && this._disposable.dispose();
     }
 
-    async awaitClose(timeout: number = 300): Promise<TextEditor> {
-        this.close();
-        return this.wait(timeout);
+    async awaitClose(): Promise<void> {
+        await this.close();
+        return await new Promise(resolve => setTimeout(() => {
+            resolve();
+        }, 100));
     }
 
     async awaitNext(timeout: number = 300): Promise<TextEditor> {

@@ -66,7 +66,7 @@ async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
-	group.list.forEach(async document => await vscode.window.showTextDocument(document, {
+	group.list.forEach(document => vscode.window.showTextDocument(document, {
 		preview: false,
 	}));
 }
@@ -74,24 +74,11 @@ async function restoreGroup(groupName: string | undefined) {
 async function closeAllEditors(): Promise<void> {
 	const editorTracker = new ActiveEditorTracker();
 
-	let active = vscode.window.activeTextEditor;
-	let editor = active;
-	const openEditors = [];
+	let editor = vscode.window.activeTextEditor;
 	do {
-		if (editor !== null) {
-			// If we didn't start with a valid editor, set one once we find it
-			if (active === undefined) {
-				active = editor;
-			}
-
-			openEditors.push(editor);
-		}
-
-		editor = await editorTracker.awaitClose();
-		if (editor !== undefined &&
-			openEditors.some(_ => TextEditorComparer.equals(_, editor, { useId: true, usePosition: true }))) { break; }
-	} while ((active === undefined && editor === undefined) ||
-		!TextEditorComparer.equals(active, editor, { useId: true, usePosition: true }));
+		await editorTracker.awaitClose();
+		editor = vscode.window.activeTextEditor;
+	} while (editor !== undefined);
 	editorTracker.dispose();
 }
 

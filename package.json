@@ -44,6 +44,18 @@
 				"command": "extension.clearAndRestoreGroup",
 				"title": "Restore tab group and close all others"
 			}
+		],
+		"configuration": [
+			{
+				"title": "Tab Groups",
+				"properties": {
+					"tab-groups.groups": {
+						"type": "array",
+						"scope": "window",
+						"description": "Used to save tab groups across sessions. Don't modify manually"
+					}
+				}
+			}
 		]
 	},
 	"scripts": {
@@ -54,11 +66,12 @@
 		"test": "npm run compile && node ./node_modules/vscode/bin/test"
 	},
 	"devDependencies": {
-		"typescript": "^3.3.1",
-		"vscode": "^1.1.28",
-		"tslint": "^5.12.1",
-		"@types/node": "^10.12.21",
+		"@types/glob": "^7.1.1",
 		"@types/mocha": "^2.2.42",
-		"open": "^6.3.0"
+		"@types/node": "^10.12.21",
+		"open": "^6.3.0",
+		"tslint": "^5.12.1",
+		"typescript": "^3.3.1",
+		"vscode": "^1.1.28"
 	}
 }

@@ -1,13 +1,9 @@
 import * as vscode from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextEditorComparer } from './comparers';
+import { Groups } from './group';
 
-interface Group {
-	name: string;
-	list: vscode.TextDocument[];
-}
-
-let groups: Group[] = [];
+let groups = new Groups();
 
 export function activate(context: vscode.ExtensionContext) {
 	let disposables = [
@@ -17,11 +13,10 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 			if (name === undefined) { return; }
 			name = name.trim();
-			if (name === '') { name = `Group${groups.length}`; }
+			if (name === '') { name = groups.newGroupName(); }
 
 			const openEditors = await getListOfEditors();
-			const group: Group = { list: openEditors.map(e => e.document).filter(e => e), name };
-			groups.push(group);
+			groups.add(name, openEditors.map(e => e.document).filter(e => e));
 		}),
 		vscode.commands.registerCommand('extension.clearAndSaveGroup', async () => {
 			let name = await vscode.window.showInputBox({
@@ -29,38 +24,37 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 			if (name === undefined) { return; }
 			name = name.trim();
-			if (name === '') { name = `Group${groups.length}`; }
+			if (name === '') { name = groups.newGroupName(); }
 
 			const openEditors = await getListOfEditors();
-			const group: Group = { list: openEditors.map(e => e.document).filter(e => e), name };
-			groups.push(group);
+			groups.add(name, openEditors.map(e => e.document).filter(e => e));
 			await closeAllEditors();
 		}),
 		vscode.commands.registerCommand('extension.restoreGroup', async () => {
-			if (groups.length === 0) {
+			if (groups.length() === 0) {
 				vscode.window.showInformationMessage("No saved groups");
 				return;
 			}
-			const groupName = await vscode.window.showQuickPick(groups.map(g => g.name));
-			restoreGroup(groupName);
+			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
+			await restoreGroup(groupName);
 		}),
 		vscode.commands.registerCommand('extension.clearAndRestoreGroup', async () => {
-			if (groups.length === 0) {
+			if (groups.length() === 0) {
 				vscode.window.showInformationMessage("No saved groups");
 				return;
 			}
-			const groupName = await vscode.window.showQuickPick(groups.map(g => g.name));
+			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
 			await closeAllEditors();
 			await restoreGroup(groupName);
 		}),
 		vscode.commands.registerCommand('extension.deleteGroup', async () => {
-			if (groups.length === 0) {
+			if (groups.length() === 0) {
 				vscode.window.showInformationMessage("No saved groups");
 				return;
 			}
-			const groupName = await vscode.window.showQuickPick(groups.map(g => g.name));
+			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
 			if (groupName === undefined) { return; }
-			groups = groups.filter(g => g.name !== groupName);
+			groups.remove(groupName);
 		}),
 	];
 	context.subscriptions.concat(disposables);
@@ -70,7 +64,7 @@ export function deactivate() { }
 
 async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
-	const group = groups.find(g => g.name === groupName);
+	const group = groups.get(groupName);
 	if (!group) { return; }
 	group.list.forEach(async document => await vscode.window.showTextDocument(document, {
 		preview: false,

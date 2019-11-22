@@ -19,12 +19,12 @@ export class ActiveEditorTracker extends Disposable {
         this._disposable && this._disposable.dispose();
     }
 
-    async awaitClose(timeout: number = 500): Promise<TextEditor> {
+    async awaitClose(timeout: number = 300): Promise<TextEditor> {
         this.close();
         return this.wait(timeout);
     }
 
-    async awaitNext(timeout: number = 500): Promise<TextEditor> {
+    async awaitNext(timeout: number = 300): Promise<TextEditor> {
         this.next();
         return this.wait(timeout);
     }
@@ -37,7 +37,7 @@ export class ActiveEditorTracker extends Disposable {
         return commands.executeCommand(BuiltInCommands.NextEditor);
     }
 
-    async wait(timeout: number = 500): Promise<TextEditor> {
+    async wait(timeout: number = 300): Promise<TextEditor> {
         const editor = await new Promise<TextEditor>((resolve, reject) => {
             let timer: any;
 

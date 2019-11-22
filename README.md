@@ -6,3 +6,7 @@ This is an extension for vscode. It allows you to
 # Usage
 
 You can open the command pallette and search "save tab group", "save tab group and close all tabs", "restore tab group" or "restore tab group and close all others"
+
+# Contributions
+
+Thanks to [eamodio](https://github.com/eamodio) for the code to cycle through tabs

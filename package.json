@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"engines": {
 		"vscode": "^1.35.0"
 	},
@@ -17,6 +17,8 @@
 	"activationEvents": [
 		"onCommand:extension.saveGroup",
 		"onCommand:extension.clearAndSaveGroup",
+		"onCommand:extension.updateGroup",
+		"onCommand:extension.updateLastGroup",
 		"onCommand:extension.restoreGroup",
 		"onCommand:extension.clearAndRestoreGroup",
 		"onCommand:extension.deleteGroup"
@@ -31,6 +33,14 @@
 			{
 				"command": "extension.clearAndSaveGroup",
 				"title": "Save tab group and close all tabs"
+			},
+			{
+				"command": "extension.updateGroup",
+				"title": "Update tab group"
+			},
+			{
+				"command": "extension.updateLastGroup",
+				"title": "Update last used tab group"
 			},
 			{
 				"command": "extension.restoreGroup",

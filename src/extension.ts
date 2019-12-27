@@ -4,31 +4,36 @@ import { TextEditorComparer } from './comparers';
 import { Groups } from './group';
 
 let groups = new Groups();
+let latestGroup: string;
 
 export function activate(context: vscode.ExtensionContext) {
 	let disposables = [
-		vscode.commands.registerCommand('extension.saveGroup', async () => {
-			let name = await vscode.window.showInputBox({
-				placeHolder: 'Enter name for group or empty for default name'
+		vscode.commands.registerCommand('extension.saveGroup', saveGroup),
+		vscode.commands.registerCommand('extension.clearAndSaveGroup', async () => {
+			const success = await saveGroup();
+			if (!success) { return; }
+			await closeAllEditors();
+		}),
+		vscode.commands.registerCommand('extension.updateGroup', async () => {
+			const name = await vscode.window.showQuickPick(groups.listOfNames(), {
+				canPickMany: false,
+				placeHolder: 'Which tab group would you like to update?',
 			});
 			if (name === undefined) { return; }
-			name = name.trim();
-			if (name === '') { name = groups.newGroupName(); }
+			latestGroup = name;
 
+			groups.remove(name);
 			const openEditors = await getListOfEditors();
 			groups.add(name, openEditors.map(e => e.document).filter(e => e));
 		}),
-		vscode.commands.registerCommand('extension.clearAndSaveGroup', async () => {
-			let name = await vscode.window.showInputBox({
-				placeHolder: 'Enter name for group or empty for default name'
-			});
-			if (name === undefined) { return; }
-			name = name.trim();
-			if (name === '') { name = groups.newGroupName(); }
-
+		vscode.commands.registerCommand('extension.updateLastGroup', async () => {
+			if (!latestGroup) {
+				vscode.window.showWarningMessage('No last group');
+				return;
+			}
+			groups.remove(latestGroup);
 			const openEditors = await getListOfEditors();
-			groups.add(name, openEditors.map(e => e.document).filter(e => e));
-			await closeAllEditors();
+			groups.add(latestGroup, openEditors.map(e => e.document).filter(e => e));
 		}),
 		vscode.commands.registerCommand('extension.restoreGroup', async () => {
 			if (groups.length() === 0) {
@@ -36,6 +41,8 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
+			if (groupName === undefined) { return; }
+			latestGroup = groupName;
 			await restoreGroup(groupName);
 		}),
 		vscode.commands.registerCommand('extension.clearAndRestoreGroup', async () => {
@@ -44,6 +51,8 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
+			if (groupName === undefined) { return; }
+			latestGroup = groupName;
 			await closeAllEditors();
 			await restoreGroup(groupName);
 		}),
@@ -54,6 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
 			if (groupName === undefined) { return; }
+			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
 		}),
 	];
@@ -61,6 +71,37 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() { }
+
+async function saveGroup(): Promise<boolean> {
+	let name = await vscode.window.showInputBox({
+		placeHolder: 'Enter name for group or empty for default name'
+	});
+	if (name === undefined) { return false; }
+	name = name.trim();
+	if (name === '') { name = groups.newGroupName(); }
+
+	if (groups.listOfNames().includes(name)) {
+		const overwrite = await vscode.window.showInputBox({
+			placeHolder: 'Tab group already exists. Do you want to overwrite?',
+			validateInput: value => {
+				value = value.toLowerCase();
+				if (value.startsWith('y') || value.startsWith('n')) {
+					return;
+				}
+				return 'Please enter y or n';
+			},
+		});
+		if (overwrite === undefined || overwrite.startsWith('n')) { return false; }
+		else {
+			groups.remove(name);
+		}
+	}
+
+	latestGroup = name;
+	const openEditors = await getListOfEditors();
+	groups.add(name, openEditors.map(e => e.document).filter(e => e));
+	return true;
+}
 
 async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }

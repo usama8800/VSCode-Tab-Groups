@@ -9,17 +9,19 @@ export class Groups {
     groups: Group[];
 
     constructor() {
-        this.groups = vscode.workspace.getConfiguration().get('tab-groups.groups') || [];
+        this.groups = vscode.workspace.getConfiguration().get('tab-groups.groups', []);
     }
 
     add(name: string, list: vscode.TextDocument[]) {
         this.groups.push({ name, list });
-        vscode.workspace.getConfiguration().update('tab-groups.groups', this.groups, false);
+        const global = vscode.workspace.getConfiguration().get('tab-groups.saveGlobally', false);
+        vscode.workspace.getConfiguration().update('tab-groups.groups', this.groups, global);
     }
 
     remove(name: string) {
         this.groups = this.groups.filter(g => g.name !== name);
-        vscode.workspace.getConfiguration().update('tab-groups.groups', this.groups, false);
+        const global = vscode.workspace.getConfiguration().get('tab-groups.saveGlobally', false);
+        vscode.workspace.getConfiguration().update('tab-groups.groups', this.groups, global);
     }
 
     get(name: string) {

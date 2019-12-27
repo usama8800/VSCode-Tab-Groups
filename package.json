@@ -63,6 +63,11 @@
 						"type": "array",
 						"scope": "window",
 						"description": "Used to save tab groups across sessions. Don't modify manually"
+					},
+					"tab-groups.saveGlobally": {
+						"type": "boolean",
+						"scope": "window",
+						"description": "Save tab groups globally or locally in a workspace"
 					}
 				}
 			}
@@ -78,10 +83,10 @@
 	"devDependencies": {
 		"@types/glob": "^7.1.1",
 		"@types/mocha": "^2.2.42",
-		"@types/node": "^10.12.21",
-		"open": "^6.3.0",
-		"tslint": "^5.12.1",
-		"typescript": "^3.3.1",
-		"vscode": "^1.1.28"
+		"@types/node": "^10.17.13",
+		"open": "^6.4.0",
+		"tslint": "^5.20.1",
+		"typescript": "^3.7.4",
+		"vscode": "^1.1.36"
 	}
 }

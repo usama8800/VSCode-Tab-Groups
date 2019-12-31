@@ -10,7 +10,16 @@ export class Groups {
 
     constructor() {
         const base64 = vscode.workspace.getConfiguration().get('tab-groups.groups', "");
-        this.groups = JSON.parse(Buffer.from(base64, 'base64').toString('ascii'));
+        const decoded = Buffer.from(base64, 'base64').toString('ascii');
+        try { // Try to use the decoded base64
+            this.groups = JSON.parse(decoded);
+        } catch { // Base64 decoded was not valid
+            try { // Try unDecoded base64. Maybe it's saved unencoded
+                this.groups = JSON.parse(base64);
+            } catch {
+                this.groups = [];
+            }
+        }
     }
 
     add(name: string, list: vscode.TextDocument[]) {

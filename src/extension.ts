@@ -12,15 +12,19 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
 	const git = gitExtension?.getAPI(1);
+	const gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups');
+
+	if (git?.state === 'initialized') {
+		initGitBranchGroups(git);
+	}
+
 	git?.onDidChangeState(e => {
-		const gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups');
 		if (e === 'initialized' && gitBranchGroups) {
 			initGitBranchGroups(git);
 		}
 	});
 	vscode.workspace.onDidChangeConfiguration(change => {
 		if (change.affectsConfiguration('tab-groups.gitBranchGroups') && git) {
-			const gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups');
 			if (gitBranchGroups) {
 				initGitBranchGroups(git);
 			}

@@ -2,11 +2,31 @@ import * as vscode from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextEditorComparer } from './comparers';
 import { Groups } from './group';
+import { API, GitExtension } from './typings/git';
 
 let groups = new Groups();
 let latestGroup: string;
+let latestBranch: string | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
+
+	const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
+	const git = gitExtension?.getAPI(1);
+	git?.onDidChangeState(e => {
+		const gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups');
+		if (e === 'initialized' && gitBranchGroups) {
+			initGitBranchGroups(git);
+		}
+	});
+	vscode.workspace.onDidChangeConfiguration(change => {
+		if (change.affectsConfiguration('tab-groups.gitBranchGroups') && git) {
+			const gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups');
+			if (gitBranchGroups) {
+				initGitBranchGroups(git);
+			}
+		}
+	});
+
 	let disposables = [
 		vscode.commands.registerCommand('extension.saveGroup', saveGroup),
 		vscode.commands.registerCommand('extension.clearAndSaveGroup', async () => {
@@ -21,19 +41,14 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 			if (name === undefined) { return; }
 			latestGroup = name;
-
-			groups.remove(name);
-			const openEditors = await getListOfEditors();
-			groups.add(name, openEditors.map(e => e.document).filter(e => e));
+			updateGroup(name);
 		}),
 		vscode.commands.registerCommand('extension.updateLastGroup', async () => {
 			if (!latestGroup) {
 				vscode.window.showWarningMessage('No last group');
 				return;
 			}
-			groups.remove(latestGroup);
-			const openEditors = await getListOfEditors();
-			groups.add(latestGroup, openEditors.map(e => e.document).filter(e => e));
+			updateGroup(latestGroup);
 		}),
 		vscode.commands.registerCommand('extension.restoreGroup', async () => {
 			if (groups.length() === 0) {
@@ -71,6 +86,33 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() { }
+
+function initGitBranchGroups(git: API) {
+	console.log(git.repositories);
+	if (git.repositories.length === 0) { return; }
+
+	const repo = git.repositories[0];
+	latestBranch = repo.state.HEAD?.name;
+
+	repo.state.onDidChange(async () => {
+		if (repo.state.HEAD?.name !== latestBranch) {
+			if (latestBranch) {
+				await updateGroup(Groups.branchGroupName(latestBranch));
+			}
+			await closeAllEditors();
+			if (repo.state.HEAD?.name) {
+				await restoreGroup(Groups.branchGroupName(repo.state.HEAD?.name));
+			}
+		}
+		latestBranch = repo.state.HEAD?.name;
+	});
+}
+
+async function updateGroup(group: string) {
+	groups.remove(group);
+	const openEditors = await getListOfEditors();
+	groups.add(group, openEditors.map(e => e.document).filter(e => e));
+}
 
 async function saveGroup(): Promise<boolean> {
 	let name = await vscode.window.showInputBox({

@@ -9,7 +9,7 @@ export class Groups {
     groups: Group[];
 
     constructor() {
-        const base64 = vscode.workspace.getConfiguration().get('tab-groups.groups', "");
+        const base64 = vscode.workspace.getConfiguration().get('tab-groups.groups', '');
         const decoded = Buffer.from(base64, 'base64').toString('ascii');
         try { // Try to use the decoded base64
             this.groups = JSON.parse(decoded);
@@ -20,6 +20,10 @@ export class Groups {
                 this.groups = [];
             }
         }
+    }
+
+    static branchGroupName(branch: string) {
+        return `Branch: ${branch}`;
     }
 
     add(name: string, list: vscode.TextDocument[]) {

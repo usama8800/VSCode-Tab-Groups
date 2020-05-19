@@ -92,7 +92,6 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() { }
 
 function initGitBranchGroups(git: API) {
-	console.log(git.repositories);
 	if (git.repositories.length === 0) { return; }
 
 	const repo = git.repositories[0];
@@ -115,7 +114,7 @@ function initGitBranchGroups(git: API) {
 async function updateGroup(group: string) {
 	groups.remove(group);
 	const openEditors = await getListOfEditors();
-	groups.add(group, openEditors.map(e => e.document).filter(e => e));
+	groups.add(group, openEditors.filter(e => e));
 }
 
 async function saveGroup(): Promise<boolean> {
@@ -145,7 +144,7 @@ async function saveGroup(): Promise<boolean> {
 
 	latestGroup = name;
 	const openEditors = await getListOfEditors();
-	groups.add(name, openEditors.map(e => e.document).filter(e => e));
+	groups.add(name, openEditors.filter(e => e));
 	return true;
 }
 
@@ -153,8 +152,9 @@ async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
-	group.list.forEach(document => vscode.window.showTextDocument(document, {
+	group.list.forEach(editor => vscode.window.showTextDocument(editor.document, {
 		preview: false,
+		viewColumn: editor.viewColumn
 	}));
 }
 
@@ -192,10 +192,11 @@ async function getListOfEditors(): Promise<(vscode.TextEditor)[]> {
 		!TextEditorComparer.equals(active, editor, { useId: true, usePosition: true }));
 	editorTracker.dispose();
 
-	const ret = [];
+	let ret = [];
 	for (let index = 0; index < openEditors.length; index++) {
 		const element = openEditors[index];
 		if (element) { ret.push(element); }
 	}
+	ret = ret.sort((a, b) => parseInt(a.viewColumn?.toString() ?? '0') - parseInt(b.viewColumn?.toString() ?? '0'));
 	return ret;
 }

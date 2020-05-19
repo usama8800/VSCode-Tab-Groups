@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 
+interface Editor {
+    document: vscode.TextDocument;
+    viewColumn: vscode.ViewColumn | undefined;
+}
 interface Group {
     name: string;
-    list: vscode.TextDocument[];
+    list: Editor[];
 }
 
 export class Groups {
@@ -26,8 +30,8 @@ export class Groups {
         return `Branch: ${branch}`;
     }
 
-    add(name: string, list: vscode.TextDocument[]) {
-        this.groups.push({ name, list });
+    add(name: string, editors: vscode.TextEditor[]) {
+        this.groups.push({ name, list: editors.map(editor => ({ document: editor.document, viewColumn: editor.viewColumn })) });
         const global = vscode.workspace.getConfiguration().get('tab-groups.saveGlobally', false);
         const encoded = Buffer.from(JSON.stringify(this.groups)).toString('base64');
         vscode.workspace.getConfiguration().update('tab-groups.groups', encoded, global);

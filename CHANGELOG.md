@@ -1,5 +1,22 @@
 # Change Log
 
+## 1.3.0
+
+- Add sidebar
+- Add rename command
+
+## 1.2.0
+
+- Save editor groups
+
+## 1.1.1
+
+- Fix issue when loading extension after git wouldn't work
+
+## 1.1.0
+
+- Add auto change tab groups according to git branches
+
 ## 1.0.9
 
 - Fix 1.0.5

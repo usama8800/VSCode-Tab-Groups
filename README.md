@@ -1,13 +1,17 @@
-This is an extension for vscode. It allows you to
-
-* Save groups of tabs
-* Restore groups of tabs
+This is an extension for vscode. It allows you to save and restore groups of tabs manually and when changing git branches
 
 # Usage
 
-You can open the command pallette and search "save tab group", "save tab group and close all tabs", "restore tab group" or "restore tab group and close all others". If you type the same name for a tab group it will ask you if you want to overwrite the previous one. You can also do "update tab group" to overwrite a specific tab group or "update last used tab group" to overwrite without asking.
+On the sidebar, you will see a Tab Group icon. It will list all the saved tab groups and provide buttons to save new tab groups, override existing ones, and restore tab groups. The context menu allows you to rename and delete tab groups. 
 
-Use the boolean setting `tab-groups.saveGlobally` to change the location where the groups are saved.
+You can also execute these commands from the command pallette.
+
+## Settings
+
+- `tab-groups.saveGlobally` to change the location where the groups are saved (one list for all folders or lists per folder).
+- `tab-groups.gitBranchGroups` to auto save and restore tab groups when changing git branches
+- `tab-groups.sidebarRestoreStyle` to select what to do with the existing tabs when restoring a tab group from the sidebar
+
 
 # Contributions
 

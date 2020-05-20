@@ -8,6 +8,7 @@ export const QualifiedExtensionId = `eamodio.${ExtensionId}`;
 export type BuiltInCommands = 'vscode.open' | 'setContext' | 'workbench.action.closeActiveEditor' | 'workbench.action.nextEditor';
 export const BuiltInCommands = {
     CloseActiveEditor: 'workbench.action.closeActiveEditor' as BuiltInCommands,
+    CloseAllEditorGroups: 'workbench.action.closeAllGroups' as BuiltInCommands,
     NextEditor: 'workbench.action.nextEditor' as BuiltInCommands,
     Open: 'vscode.open' as BuiltInCommands,
     SetContext: 'setContext' as BuiltInCommands

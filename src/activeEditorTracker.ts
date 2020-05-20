@@ -19,6 +19,13 @@ export class ActiveEditorTracker extends Disposable {
         this._disposable && this._disposable.dispose();
     }
 
+    async awaitCloseAll(): Promise<void> {
+        await this.closeAll();
+        return await new Promise(resolve => setTimeout(() => {
+            resolve();
+        }, 100));
+    }
+
     async awaitClose(): Promise<void> {
         await this.close();
         return await new Promise(resolve => setTimeout(() => {
@@ -33,6 +40,10 @@ export class ActiveEditorTracker extends Disposable {
 
     async close(): Promise<{} | undefined> {
         return commands.executeCommand(BuiltInCommands.CloseActiveEditor);
+    }
+
+    async closeAll(): Promise<{} | undefined> {
+        return commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
     }
 
     async next(): Promise<{} | undefined> {

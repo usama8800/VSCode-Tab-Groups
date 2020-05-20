@@ -27,6 +27,79 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "tab-groups",
+					"title": "Tab Groups",
+					"icon": "icons/icon.svg"
+				}
+			]
+		},
+		"views": {
+			"tab-groups": [
+				{
+					"id": "tab-groups-groups",
+					"name": "Tab Groups"
+				}
+			]
+		},
+		"menus": {
+			"view/title": [
+				{
+					"when": "view == tab-groups-groups",
+					"command": "extension.saveGroupFromView",
+					"group": "navigation"
+				}
+			],
+			"view/item/context": [
+				{
+					"when": "view == tab-groups-groups && viewItem == group",
+					"command": "extension.saveGroupFromView",
+					"group": "inline"
+				},
+				{
+					"when": "view == tab-groups-groups && viewItem == group",
+					"command": "extension.restoreGroupFromView",
+					"group": "inline"
+				},
+				{
+					"when": "view == tab-groups-groups && viewItem == group",
+					"command": "extension.renameGroupFromView"
+				},
+				{
+					"when": "view == tab-groups-groups && viewItem == group",
+					"command": "extension.deleteGroupFromView"
+				},
+				{
+					"when": "view == tab-groups-groups && viewItem =~ /^split$|^file$/",
+					"command": "extension.deleteEditorGroupFromView",
+					"group": "inline"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "extension.restoreGroupFromView",
+					"when": "false"
+				},
+				{
+					"command": "extension.saveGroupFromView",
+					"when": "false"
+				},
+				{
+					"command": "extension.renameGroupFromView",
+					"when": "false"
+				},
+				{
+					"command": "extension.deleteGroupFromView",
+					"when": "false"
+				},
+				{
+					"command": "extension.deleteEditorGroupFromView",
+					"when": "false"
+				}
+			]
+		},
 		"commands": [
 			{
 				"command": "extension.saveGroup",
@@ -47,6 +120,42 @@
 			{
 				"command": "extension.restoreGroup",
 				"title": "Restore tab group"
+			},
+			{
+				"command": "extension.restoreGroupFromView",
+				"title": "Restore tab group",
+				"icon": {
+					"dark": "icons/restore_dark.svg",
+					"light": "icons/restore_light.svg"
+				}
+			},
+			{
+				"command": "extension.saveGroupFromView",
+				"title": "Save tab group",
+				"icon": {
+					"dark": "icons/save_dark.svg",
+					"light": "icons/save_light.svg"
+				}
+			},
+			{
+				"command": "extension.renameGroupFromView",
+				"title": "Rename"
+			},
+			{
+				"command": "extension.deleteGroupFromView",
+				"title": "Delete"
+			},
+			{
+				"command": "extension.deleteEditorGroupFromView",
+				"title": "Delete",
+				"icon": {
+					"dark": "icons/delete_dark.svg",
+					"light": "icons/delete_light.svg"
+				}
+			},
+			{
+				"command": "extension.renameGroup",
+				"title": "Rename tab group"
 			},
 			{
 				"command": "extension.deleteGroup",
@@ -77,6 +186,17 @@
 						"scope": "window",
 						"description": "When changing git branches, save and restore groups automatically",
 						"default": true
+					},
+					"tab-groups.sidebarRestoreStyle": {
+						"type": "string",
+						"description": "What to do with the editors already open when restoring from the sidebar",
+						"enum": [
+							"Update current; Close others",
+							"Update current; Keep others",
+							"Close others",
+							"Keep others"
+						],
+						"default": "Keep others"
 					}
 				}
 			}

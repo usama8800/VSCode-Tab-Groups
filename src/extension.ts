@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextEditorComparer } from './comparers';
-import { Groups } from './group';
+import { Groups, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
 let groups = new Groups();
@@ -30,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 	});
+	vscode.window.registerTreeDataProvider('tab-groups-groups', groups);
 
 	let disposables = [
 		vscode.commands.registerCommand('extension.saveGroup', saveGroup),
@@ -54,6 +55,20 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			updateGroup(latestGroup);
 		}),
+		vscode.commands.registerCommand('extension.saveGroupFromView', async (item: TreeItem) => {
+			if (item === undefined) {
+				return saveGroup();
+			}
+
+			if (item.getType() !== TreeItemType.GROUP) {
+				return;
+			}
+			const groupName = item.getText();
+
+			if (groupName === undefined) { return; }
+			latestGroup = groupName;
+			await updateGroup(groupName);
+		}),
 		vscode.commands.registerCommand('extension.restoreGroup', async () => {
 			if (groups.length() === 0) {
 				vscode.window.showInformationMessage("No saved groups");
@@ -63,6 +78,58 @@ export function activate(context: vscode.ExtensionContext) {
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
 			await restoreGroup(groupName);
+		}),
+		vscode.commands.registerCommand('extension.restoreGroupFromView', async (item: TreeItem) => {
+			if (item.getType() !== TreeItemType.GROUP) {
+				return;
+			}
+			const groupName = item.getText();
+
+			const action: string = vscode.workspace.getConfiguration().get('tab-groups.sidebarRestoreStyle', 'Keep others');
+			if (action.startsWith('Update current;')) {
+				await updateGroup(groupName);
+			}
+			if (action.endsWith('Close others')) {
+				await closeAllEditors();
+			}
+
+			if (groupName === undefined) { return; }
+			latestGroup = groupName;
+			await restoreGroup(groupName);
+		}),
+		vscode.commands.registerCommand('extension.renameGroup', async (item: TreeItem) => {
+			const oldName = await vscode.window.showQuickPick(groups.listOfNames(), {
+				canPickMany: false,
+				placeHolder: 'Which tab group would you like to rename?',
+			});
+			if (oldName === undefined) { return; }
+
+			let name = await vscode.window.showInputBox({
+				placeHolder: 'Enter name for group or empty for default name'
+			});
+			if (name === undefined) { return false; }
+			name = name.trim();
+			if (name === '') { name = groups.newGroupName(); }
+
+			renameGroup(oldName, name);
+		}),
+		vscode.commands.registerCommand('extension.renameGroupFromView', async (item: TreeItem) => {
+			if (item.getType() !== TreeItemType.GROUP) {
+				return;
+			}
+			const groupName = item.getText();
+
+			if (groupName === undefined) { return; }
+			latestGroup = groupName;
+
+			let name = await vscode.window.showInputBox({
+				placeHolder: 'Enter name for group or empty for default name'
+			});
+			if (name === undefined) { return false; }
+			name = name.trim();
+			if (name === '') { name = groups.newGroupName(); }
+
+			renameGroup(groupName, name);
 		}),
 		vscode.commands.registerCommand('extension.clearAndRestoreGroup', async () => {
 			if (groups.length() === 0) {
@@ -84,6 +151,34 @@ export function activate(context: vscode.ExtensionContext) {
 			if (groupName === undefined) { return; }
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
+		}),
+		vscode.commands.registerCommand('extension.deleteGroupFromView', async (item: TreeItem) => {
+			if (item.getType() !== TreeItemType.GROUP) {
+				return;
+			}
+
+			const groupName = item.getText();
+			if (groupName === undefined) { return; }
+			if (latestGroup === groupName) { latestGroup = ''; }
+			groups.remove(groupName);
+		}),
+		vscode.commands.registerCommand('extension.deleteEditorGroupFromView', async (item: TreeItem) => {
+			if (item.getType() === TreeItemType.GROUP) {
+				return;
+			}
+			let groupItem = item.getParent();
+			let isFile = false;
+			if (groupItem?.getType() !== TreeItemType.GROUP) {
+				groupItem = groupItem?.getParent();
+				isFile = true;
+			}
+
+			const groupName = groupItem?.getText();
+			if (groupName === undefined) { return; }
+			latestGroup = groupName;
+
+			if (isFile) { groups.removeFile(groupName, item); }
+			else { groups.removeViewColumn(groupName, (item as SplitTreeItem).getViewColumn()); }
 		}),
 	];
 	context.subscriptions.concat(disposables);
@@ -115,6 +210,10 @@ async function updateGroup(group: string) {
 	groups.remove(group);
 	const openEditors = await getListOfEditors();
 	groups.add(group, openEditors.filter(e => e));
+}
+
+function renameGroup(oldName: string, newName: string) {
+	groups.rename(oldName, newName);
 }
 
 async function saveGroup(): Promise<boolean> {
@@ -160,12 +259,7 @@ async function restoreGroup(groupName: string | undefined) {
 
 async function closeAllEditors(): Promise<void> {
 	const editorTracker = new ActiveEditorTracker();
-
-	let editor = vscode.window.activeTextEditor;
-	do {
-		await editorTracker.awaitClose();
-		editor = vscode.window.activeTextEditor;
-	} while (editor !== undefined);
+	await editorTracker.awaitCloseAll();
 	editorTracker.dispose();
 }
 

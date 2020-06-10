@@ -10,8 +10,9 @@ export const BuiltInCommands = {
     CloseActiveEditor: 'workbench.action.closeActiveEditor' as BuiltInCommands,
     CloseAllEditorGroups: 'workbench.action.closeAllGroups' as BuiltInCommands,
     NextEditor: 'workbench.action.nextEditor' as BuiltInCommands,
+    ViewFirstEditor: 'workbench.action.firstEditorInGroup' as BuiltInCommands,
     Open: 'vscode.open' as BuiltInCommands,
-    SetContext: 'setContext' as BuiltInCommands
+    SetContext: 'setContext' as BuiltInCommands,
 };
 
 export type WorkspaceState = 'restoreEditors:documents';

@@ -271,6 +271,7 @@ async function closeAllEditors(): Promise<void> {
 async function getListOfEditors(): Promise<(vscode.TextEditor)[]> {
 	const editorTracker = new ActiveEditorTracker();
 
+	await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
 	let active = vscode.window.activeTextEditor;
 	let editor = active;
 	const openEditors = [];
@@ -296,6 +297,8 @@ async function getListOfEditors(): Promise<(vscode.TextEditor)[]> {
 		const element = openEditors[index];
 		if (element) { ret.push(element); }
 	}
+
+	// Sort by viewcolumn
 	ret = ret.sort((a, b) => parseInt(a.viewColumn?.toString() ?? '0') - parseInt(b.viewColumn?.toString() ?? '0'));
 	return ret;
 }

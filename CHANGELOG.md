@@ -1,5 +1,14 @@
 # Change Log
 
+## 1.3.2
+
+- Change delete icon to x
+- Add minimize button to close all editors
+
+## 1.3.1
+
+- 
+
 ## 1.3.0
 
 - Add sidebar

@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
+import { commands } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextEditorComparer } from './comparers';
+import { BuiltInCommands } from './constants';
 import { Groups, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
@@ -151,6 +153,9 @@ export function activate(context: vscode.ExtensionContext) {
 			if (groupName === undefined) { return; }
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
+		}),
+		vscode.commands.registerCommand('extension.closeAllEditors', () => {
+			commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 		}),
 		vscode.commands.registerCommand('extension.deleteGroupFromView', async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {

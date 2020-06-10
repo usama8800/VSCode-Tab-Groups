@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "1.3.1",
+	"version": "1.3.2",
 	"engines": {
 		"vscode": "^1.35.0"
 	},
@@ -15,14 +15,6 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extension.saveGroup",
-		"onCommand:extension.clearAndSaveGroup",
-		"onCommand:extension.updateGroup",
-		"onCommand:extension.updateLastGroup",
-		"onCommand:extension.restoreGroup",
-		"onCommand:extension.clearAndRestoreGroup",
-		"onCommand:extension.deleteGroup",
-		"onCommand:git.checkout",
 		"*"
 	],
 	"main": "./out/extension.js",
@@ -49,6 +41,11 @@
 				{
 					"when": "view == tab-groups-groups",
 					"command": "extension.saveGroupFromView",
+					"group": "navigation"
+				},
+				{
+					"when": "view == tab-groups-groups",
+					"command": "extension.closeAllEditors",
 					"group": "navigation"
 				}
 			],
@@ -78,6 +75,10 @@
 				}
 			],
 			"commandPalette": [
+				{
+					"command": "extension.closeAllEditors",
+					"when": "false"
+				},
 				{
 					"command": "extension.restoreGroupFromView",
 					"when": "false"
@@ -120,6 +121,14 @@
 			{
 				"command": "extension.restoreGroup",
 				"title": "Restore tab group"
+			},
+			{
+				"command": "extension.closeAllEditors",
+				"title": "Close all editors",
+				"icon": {
+					"dark": "icons/minimize_dark.svg",
+					"light": "icons/minimize_light.svg"
+				}
 			},
 			{
 				"command": "extension.restoreGroupFromView",

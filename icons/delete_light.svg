@@ -34,70 +34,104 @@
    inkscape:window-height="1057"
    id="namedview39"
    showgrid="false"
-   inkscape:zoom="0.4796748"
-   inkscape:cx="246"
-   inkscape:cy="246"
+   inkscape:zoom="1.3567252"
+   inkscape:cx="238.7102"
+   inkscape:cy="231.3829"
    inkscape:window-x="74"
    inkscape:window-y="-8"
    inkscape:window-maximized="1"
    inkscape:current-layer="Layer_1" />
 <g
    id="g6"
-   transform="matrix(0.81355932,0,0,1,43.779661,0)"
-   style="fill:#000000;fill-opacity:1">
+   transform="matrix(0.57527331,0.57527331,-0.70710678,0.70710678,276.34629,-69.465503)"
+   style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-opacity:1;fill-rule:evenodd;opacity:0.99">
 	<g
    id="g4"
-   style="fill:#000000;fill-opacity:1">
-		<path
-   d="M 465.064,207.562 H 26.908 C 12.076,207.562 0,219.698 0,234.53 v 22.804 c 0,14.832 12.072,27.104 26.908,27.104 h 438.156 c 14.84,0 26.936,-12.272 26.936,-27.104 V 234.53 c 0,-14.832 -12.096,-26.968 -26.936,-26.968 z"
-   id="path2"
-   inkscape:connector-curvature="0"
-   style="fill:#000000;fill-opacity:1" />
+   style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-opacity:1;fill-rule:evenodd">
+		
 	</g>
 </g>
 <g
-   id="g8">
+   id="g8"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g10">
+   id="g10"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g12">
+   id="g12"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g14">
+   id="g14"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g16">
+   id="g16"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g18">
+   id="g18"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g20">
+   id="g20"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g22">
+   id="g22"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g24">
+   id="g24"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g26">
+   id="g26"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g28">
+   id="g28"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g30">
+   id="g30"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g32">
+   id="g32"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g34">
+   id="g34"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
 <g
-   id="g36">
+   id="g36"
+   transform="rotate(45,243.91525,246)"
+   style="fill-rule:evenodd;opacity:0.99">
 </g>
-</svg>
+<g
+   id="g6-8"
+   transform="matrix(-0.57527331,0.57527331,-0.70710678,-0.70710678,559.38075,278.43103)"
+   style="fill:#000001;fill-opacity:1;stroke:#000000;stroke-opacity:1;opacity:0.99"><g
+     id="g4-4"
+     style="fill:#000001;fill-opacity:1;stroke:#000000;stroke-opacity:1"><path
+       id="path2-0"
+       style="fill:#000001;fill-opacity:1;stroke:#000000;stroke-opacity:1"
+       d="M 465.064,207.562 C 318.09771,207.65528 171.12192,207.37544 24.161572,207.70191 7.5069179,208.89925 -2.2854566,226.06558 0,241.51613 c -0.1936514,13.56914 -1.5330123,30.04525 11.874414,38.25678 12.932087,7.81694 28.638423,3.5729 42.978098,4.66509 137.651968,-0.0943 275.313638,0.1886 412.959548,-0.14144 16.67697,-1.25093 26.46113,-18.47074 24.18794,-33.94869 0.19,-13.54186 1.55018,-30.01981 -11.8918,-38.16381 -4.40306,-3.00057 -9.71471,-4.63707 -15.0442,-4.62206 z M 198.75329,67.778433 c 0.11465,119.565797 -0.22932,239.139317 0.17197,358.700277 1.47173,13.54955 22.57201,21.51623 41.56331,19.65687 16.67874,0.15755 36.93062,1.2472 47.02396,-9.66054 9.60832,-10.52102 4.39169,-23.29905 5.73417,-34.96523 -0.11591,-111.98804 0.23182,-223.98397 -0.17385,-335.967086 -1.5376,-13.567705 -22.70362,-21.527699 -41.7286,-19.678324 -16.6452,-0.154577 -36.89935,-1.261164 -46.90968,9.674684 -3.6882,3.582151 -5.69973,7.903493 -5.68128,12.239349 z" /></g></g></svg>

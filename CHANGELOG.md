@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.3.3
+
+- Save correct order of tabs
+- Save focussed tab
+
 ## 1.3.2
 
 - Change delete icon to x

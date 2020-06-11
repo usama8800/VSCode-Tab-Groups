@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { commands } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
-import { TextEditorComparer } from './comparers';
+import { TextDocumentComparer, TextEditorComparer } from './comparers';
 import { BuiltInCommands } from './constants';
-import { Groups, SplitTreeItem, TreeItem, TreeItemType } from './group';
+import { Editor, Groups, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
 let groups = new Groups();
@@ -260,6 +260,11 @@ async function restoreGroup(groupName: string | undefined) {
 		preview: false,
 		viewColumn: editor.viewColumn
 	}));
+
+	const focussed = group.list.find(editor => editor.focussed);
+	if (focussed) {
+		await focusEditor(focussed);
+	}
 }
 
 async function closeAllEditors(): Promise<void> {
@@ -268,13 +273,14 @@ async function closeAllEditors(): Promise<void> {
 	editorTracker.dispose();
 }
 
-async function getListOfEditors(): Promise<(vscode.TextEditor)[]> {
+async function getListOfEditors(): Promise<Editor[]> {
 	const editorTracker = new ActiveEditorTracker();
 
+	const focussedEditor = vscode.window.activeTextEditor;
 	await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
 	let active = vscode.window.activeTextEditor;
 	let editor = active;
-	const openEditors = [];
+	const openEditors: (vscode.TextEditor | undefined)[] = [];
 	do {
 		if (editor !== null) {
 			// If we didn't start with a valid editor, set one once we find it
@@ -292,13 +298,52 @@ async function getListOfEditors(): Promise<(vscode.TextEditor)[]> {
 		!TextEditorComparer.equals(active, editor, { useId: true, usePosition: true }));
 	editorTracker.dispose();
 
-	let ret = [];
+	let ret: Editor[] = [];
 	for (let index = 0; index < openEditors.length; index++) {
 		const element = openEditors[index];
-		if (element) { ret.push(element); }
+		if (element) {
+			ret.push({
+				document: element.document,
+				viewColumn: element.viewColumn,
+				focussed: TextEditorComparer.equals(element, focussedEditor),
+			});
+		}
 	}
 
 	// Sort by viewcolumn
 	ret = ret.sort((a, b) => parseInt(a.viewColumn?.toString() ?? '0') - parseInt(b.viewColumn?.toString() ?? '0'));
+	if (focussedEditor) {
+		await focusEditor({
+			document: focussedEditor.document,
+			focussed: true,
+			viewColumn: focussedEditor.viewColumn
+		});
+	}
 	return ret;
+}
+
+async function focusEditor(focussed: Editor) {
+	const editorTracker = new ActiveEditorTracker();
+	let active = vscode.window.activeTextEditor;
+	let editor = active;
+	const openEditors = [];
+	do {
+		if (editor !== null) {
+			// If we didn't start with a valid editor, set one once we find it
+			if (active === undefined) {
+				active = editor;
+			}
+
+			openEditors.push(editor);
+		}
+
+		editor = await editorTracker.awaitNext(500);
+		if (editor !== undefined &&
+			openEditors.some(_ => TextEditorComparer.equals(_, editor, { useId: true, usePosition: true }))) { break; }
+		if (TextDocumentComparer.equals(editor.document, focussed.document) && editor.viewColumn === focussed.viewColumn) {
+			break;
+		}
+	} while ((active === undefined && editor === undefined) ||
+		!TextEditorComparer.equals(active, editor, { useId: true, usePosition: true }));
+	editorTracker.dispose();
 }

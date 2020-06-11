@@ -1,9 +1,10 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-interface Editor {
+export interface Editor {
     document: vscode.TextDocument;
     viewColumn?: vscode.ViewColumn;
+    focussed: boolean;
 }
 interface Group {
     name: string;
@@ -91,20 +92,22 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         try { // Try to use the decoded base64
             this.groups = JSON.parse(decoded);
             if (this.groups.length > 0 && this.groups[0].list.length > 0) {
-                const isWithoutViewColumn = (this.groups[0].list[0] as any).document === undefined;
+                const isWithoutViewColumn = !Object.keys(this.groups[0].list[0]).includes('viewColumn');
+                const isWithoutFocussed = !Object.keys(this.groups[0].list[0]).includes('focussed');
                 if (isWithoutViewColumn) {
                     this.groups = this.groups.map(group => ({
                         name: group.name,
-                        list: group.list.map(list => ({ document: (list as any), viewColumn: undefined }))
+                        list: group.list.map(list => ({ document: (list as any), viewColumn: undefined, focussed: false }))
+                    }));
+                } else if (isWithoutFocussed) {
+                    this.groups = this.groups.map(group => ({
+                        name: group.name,
+                        list: group.list.map(list => ({ document: list.document, viewColumn: list.viewColumn, focussed: false }))
                     }));
                 }
             }
         } catch { // Base64 decoded was not valid
-            try { // Try unDecoded base64. Maybe it's saved unencoded
-                this.groups = JSON.parse(base64);
-            } catch {
-                this.groups = [];
-            }
+            this.groups = [];
         }
     }
 
@@ -162,14 +165,8 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         return `Branch: ${branch}`;
     }
 
-    add(name: string, editors: vscode.TextEditor[]) {
-        this.groups.push({
-            name,
-            list: editors.map(editor => ({
-                document: editor.document,
-                viewColumn: editor.viewColumn
-            }))
-        });
+    add(name: string, list: Editor[]) {
+        this.groups.push({ name, list });
         this.saveToSettings();
     }
 

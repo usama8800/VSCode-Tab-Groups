@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.3.4
+
+- Fix git branch groups false not working
+- Sort tab groups by name in sidebar
+
 ## 1.3.3
 
 - Save correct order of tabs

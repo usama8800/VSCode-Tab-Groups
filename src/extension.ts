@@ -14,21 +14,27 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
 	const git = gitExtension?.getAPI(1);
-	const gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups');
+	let gitBranchGroups: boolean = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups', true);
+	let repoOnDidChangeDisposable: vscode.Disposable | undefined;
 
-	if (git?.state === 'initialized') {
-		initGitBranchGroups(git);
+	if (git?.state === 'initialized' && gitBranchGroups) {
+		repoOnDidChangeDisposable = initGitBranchGroups(git);
 	}
 
 	git?.onDidChangeState(e => {
 		if (e === 'initialized' && gitBranchGroups) {
-			initGitBranchGroups(git);
+			repoOnDidChangeDisposable = initGitBranchGroups(git);
+		} else {
+			repoOnDidChangeDisposable?.dispose();
 		}
 	});
 	vscode.workspace.onDidChangeConfiguration(change => {
 		if (change.affectsConfiguration('tab-groups.gitBranchGroups') && git) {
+			gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups', true);
 			if (gitBranchGroups) {
-				initGitBranchGroups(git);
+				repoOnDidChangeDisposable = initGitBranchGroups(git);
+			} else {
+				repoOnDidChangeDisposable?.dispose();
 			}
 		}
 	});
@@ -197,7 +203,7 @@ function initGitBranchGroups(git: API) {
 	const repo = git.repositories[0];
 	latestBranch = repo.state.HEAD?.name;
 
-	repo.state.onDidChange(async () => {
+	return repo.state.onDidChange(async () => {
 		if (repo.state.HEAD?.name !== latestBranch) {
 			if (latestBranch) {
 				await updateGroup(Groups.branchGroupName(latestBranch));
@@ -287,6 +293,9 @@ async function getListOfEditors(): Promise<Editor[]> {
 			if (active === undefined) {
 				active = editor;
 			}
+			if (active === undefined) {
+				break;
+			}
 
 			openEditors.push(editor);
 		}
@@ -332,6 +341,10 @@ async function focusEditor(focussed: Editor) {
 			// If we didn't start with a valid editor, set one once we find it
 			if (active === undefined) {
 				active = editor;
+			}
+
+			if (active === undefined) {
+				break;
 			}
 
 			openEditors.push(editor);

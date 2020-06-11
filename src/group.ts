@@ -130,7 +130,7 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
 
     getChildren(element?: TreeItem): vscode.ProviderResult<TreeItem[]> {
         if (element === undefined) {
-            return this.groups.map(group => new TreeItem(TreeItemType.GROUP, group.name));
+            return this.groups.sort((a, b) => a.name.localeCompare(b.name)).map(group => new TreeItem(TreeItemType.GROUP, group.name));
         }
 
         if (element.getType() === TreeItemType.GROUP) {

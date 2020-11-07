@@ -6,14 +6,13 @@ export interface Editor {
     viewColumn?: vscode.ViewColumn;
     focussed: boolean;
 }
-interface Group {
+export interface Group {
     name: string;
     list: Editor[];
 }
 
 export enum TreeItemType {
     GROUP = 'group', SPLIT = 'split', FILE = 'file'
-
 }
 
 export class TreeItem {
@@ -121,6 +120,14 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         );
         item.tooltip = element.getData();
         item.contextValue = element.getType();
+        if (element.getType() === TreeItemType.FILE) {
+            item.command = {
+                command: 'extension.openFileFromView',
+                title: 'Open file',
+                tooltip: 'test',
+                arguments: [element]
+            };
+        }
         return item;
     }
 

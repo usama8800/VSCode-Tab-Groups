@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.3.6
+
+- Open file from group view
+
 ## 1.3.5
 
 - Fix `update current;` options for `sidebarRestoreStyle`

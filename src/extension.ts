@@ -3,7 +3,7 @@ import { commands } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextDocumentComparer, TextEditorComparer } from './comparers';
 import { BuiltInCommands } from './constants';
-import { Editor, Groups, SplitTreeItem, TreeItem, TreeItemType } from './group';
+import { Editor, Group, Groups, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
 let groups = new Groups();
@@ -94,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const groupName = item.getText();
 
 			const action: string = vscode.workspace.getConfiguration().get('tab-groups.sidebarRestoreStyle', 'Keep others');
-			if (action.startsWith('Update current;')) {
+			if (action.startsWith('Update current;') && groupName !== latestGroup) {
 				await updateGroup(latestGroup);
 			}
 			if (action.endsWith('Close others')) {
@@ -191,6 +191,32 @@ export function activate(context: vscode.ExtensionContext) {
 			if (isFile) { groups.removeFile(groupName, item); }
 			else { groups.removeViewColumn(groupName, (item as SplitTreeItem).getViewColumn()); }
 		}),
+		vscode.commands.registerCommand('extension.openFileFromView', async (item: TreeItem) => {
+			if (item.getType() !== TreeItemType.FILE) {
+				return;
+			}
+			let group: Group | undefined;
+
+			let parent = item.getParent();
+			if (parent?.getType() === TreeItemType.GROUP) {
+				group = groups.get(parent.getData());
+			} else {
+				parent = parent?.getParent();
+				if (parent?.getType() === TreeItemType.GROUP) {
+					group = groups.get(parent.getData());
+				}
+			}
+
+			if (!group) { return; }
+
+			const editor = group.list.find(e => e.document.fileName === item.getData());
+			if (!editor) { return; }
+
+			vscode.window.showTextDocument(editor.document, {
+				preview: false,
+				viewColumn: editor.viewColumn
+			});
+		}),
 	];
 	context.subscriptions.concat(disposables);
 }
@@ -218,6 +244,7 @@ function initGitBranchGroups(git: API) {
 }
 
 async function updateGroup(group: string) {
+	if (group === undefined) { return; }
 	groups.remove(group);
 	const openEditors = await getListOfEditors();
 	groups.add(group, openEditors.filter(e => e));

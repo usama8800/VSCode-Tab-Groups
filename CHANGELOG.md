@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.3.5
+
+- Fix `update current;` options for `sidebarRestoreStyle`
+
 ## 1.3.4
 
 - Fix git branch groups false not working

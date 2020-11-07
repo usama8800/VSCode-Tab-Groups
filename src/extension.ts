@@ -95,7 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const action: string = vscode.workspace.getConfiguration().get('tab-groups.sidebarRestoreStyle', 'Keep others');
 			if (action.startsWith('Update current;')) {
-				await updateGroup(groupName);
+				await updateGroup(latestGroup);
 			}
 			if (action.endsWith('Close others')) {
 				await closeAllEditors();

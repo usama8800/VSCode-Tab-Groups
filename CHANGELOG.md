@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.3.7
+
+- Add undo button
+- Add welcome view
+
 ## 1.3.6
 
 - Open file from group view
@@ -25,8 +30,6 @@
 
 ## 1.3.1
 
-- 
-
 ## 1.3.0
 
 - Add sidebar
@@ -48,7 +51,7 @@
 
 - Fix 1.0.5
 
-## 1.0.8 
+## 1.0.8
 
 - Revert to 1.0.4
 

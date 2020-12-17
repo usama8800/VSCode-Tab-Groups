@@ -217,6 +217,8 @@ export function activate(context: vscode.ExtensionContext) {
 				viewColumn: editor.viewColumn
 			});
 		}),
+		vscode.commands.registerCommand('extension.undo', () => groups.undo()),
+		vscode.commands.registerCommand('extension.undoFromView', (item: TreeItem) => groups.undo()),
 	];
 	context.subscriptions.concat(disposables);
 }
@@ -245,7 +247,7 @@ function initGitBranchGroups(git: API) {
 
 async function updateGroup(group: string) {
 	if (group === undefined) { return; }
-	groups.remove(group);
+	groups.remove(group, true);
 	const openEditors = await getListOfEditors();
 	groups.add(group, openEditors.filter(e => e));
 }
@@ -289,10 +291,14 @@ async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
-	group.list.forEach(editor => vscode.window.showTextDocument(editor.document, {
-		preview: false,
-		viewColumn: editor.viewColumn
-	}));
+	group.list.forEach(async editor => {
+		try {
+			await vscode.window.showTextDocument(editor.document, {
+				preview: false,
+				viewColumn: editor.viewColumn
+			});
+		} catch { }
+	});
 
 	const focussed = group.list.find(editor => editor.focussed);
 	if (focussed) {

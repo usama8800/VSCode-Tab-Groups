@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
@@ -84,10 +85,13 @@ export class SplitTreeItem extends TreeItem {
 
 export class Groups implements vscode.TreeDataProvider<TreeItem>{
     groups: Group[];
+    undoStack: Group[][];
 
     constructor() {
         const base64 = vscode.workspace.getConfiguration().get('tab-groups.groups', '');
         const decoded = Buffer.from(base64, 'base64').toString('ascii');
+        this.groups = [];
+        this.undoStack = [];
         try { // Try to use the decoded base64
             this.groups = JSON.parse(decoded);
             if (this.groups.length > 0 && this.groups[0].list.length > 0) {
@@ -105,9 +109,7 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
                     }));
                 }
             }
-        } catch { // Base64 decoded was not valid
-            this.groups = [];
-        }
+        } catch { } // Base64 decoded was not valid
     }
 
     private _onDidChangeTreeData = new vscode.EventEmitter<TreeItem | undefined>();
@@ -145,10 +147,9 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
             if (group === undefined) { return []; }
 
             return group.list.reduce((prev, curr) => {
-                if (
-                    prev.find(item =>
-                        item.getType() === TreeItemType.SPLIT && (item as SplitTreeItem).getViewColumn() ===
-                        curr.viewColumn) === undefined) {
+                if (prev.find(item =>
+                    item.getType() === TreeItemType.SPLIT &&
+                    (item as SplitTreeItem).getViewColumn() === curr.viewColumn) === undefined) {
                     prev.push(new SplitTreeItem(group.name, element, curr.viewColumn));
                 }
                 return prev;
@@ -173,16 +174,19 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
     }
 
     add(name: string, list: Editor[]) {
+        this.undoStack.push(cloneDeep(this.groups));
         this.groups.push({ name, list });
         this.saveToSettings();
     }
 
-    remove(name: string) {
+    remove(name: string, updating = false) {
+        if (!updating) this.undoStack.push(cloneDeep(this.groups));
         this.groups = this.groups.filter(g => g.name !== name);
         this.saveToSettings();
     }
 
     rename(oldName: string, newName: string) {
+        this.undoStack.push(cloneDeep(this.groups));
         const old = this.groups.find(group => group.name === oldName);
         if (old === undefined) { return; }
         old.name = newName;
@@ -190,26 +194,32 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
     }
 
     removeFile(name: string, fileItem: TreeItem) {
-        console.log(name);
         const group = this.groups.find(group => group.name === name);
         if (!group) { return; }
 
-        console.log(group.list);
-        group.list = group.list.filter(editor =>
-            !(editor.document.fileName === fileItem.getData() &&
-                editor.viewColumn === (fileItem.getParent() as SplitTreeItem).getViewColumn()));
-        console.log(group.list);
+        this.undoStack.push(cloneDeep(this.groups));
+        group.list = group.list.filter(editor => !(
+            editor.document.fileName === fileItem.getData() &&
+            editor.viewColumn === (fileItem.getParent() as SplitTreeItem).getViewColumn()
+        ));
         this.saveToSettings();
     }
 
+    undo() {
+        const groups = this.undoStack.pop();
+        if (groups !== undefined) {
+            this.groups = groups;
+            this.saveToSettings();
+        } else {
+            vscode.window.showInformationMessage('Nothing to undo');
+        }
+    }
+
     removeViewColumn(name: string, viewColumn?: vscode.ViewColumn) {
-        console.log(name);
         const group = this.groups.find(group => group.name === name);
         if (!group) { return; }
 
-        console.log(group.list);
         group.list = group.list.filter(editor => editor.viewColumn !== viewColumn);
-        console.log(group.list);
         this.saveToSettings();
     }
 

@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "1.3.6",
+	"version": "1.3.7",
 	"categories": [
 		"Other"
 	],
@@ -16,6 +16,12 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"viewsWelcome": [
+			{
+				"view": "tab-groups-groups",
+				"contents": "No saved tab groups.\n[Save current tabs](command:extension.saveGroup)"
+			}
+		],
 		"viewsContainers": {
 			"activitybar": [
 				{
@@ -38,6 +44,11 @@
 				{
 					"when": "view == tab-groups-groups",
 					"command": "extension.saveGroupFromView",
+					"group": "navigation"
+				},
+				{
+					"when": "view == tab-groups-groups",
+					"command": "extension.undoFromView",
 					"group": "navigation"
 				},
 				{
@@ -74,6 +85,10 @@
 			"commandPalette": [
 				{
 					"command": "extension.closeAllEditors",
+					"when": "false"
+				},
+				{
+					"command": "extension.undoFromView",
 					"when": "false"
 				},
 				{
@@ -124,11 +139,23 @@
 				"title": "Restore tab group"
 			},
 			{
+				"command": "extension.undo",
+				"title": "Undo tab groups operation"
+			},
+			{
 				"command": "extension.closeAllEditors",
 				"title": "Close all editors",
 				"icon": {
 					"dark": "icons/minimize_dark.svg",
 					"light": "icons/minimize_light.svg"
+				}
+			},
+			{
+				"command": "extension.undoFromView",
+				"title": "Undo",
+				"icon": {
+					"dark": "icons/undo_dark.svg",
+					"light": "icons/undo_light.svg"
 				}
 			},
 			{
@@ -230,6 +257,7 @@
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.1",
+		"@types/lodash": "^4.14.165",
 		"@types/mocha": "^2.2.42",
 		"@types/node": "^10.17.21",
 		"@types/vscode": "^1.34.0",
@@ -239,6 +267,7 @@
 	},
 	"dependencies": {
 		"@types/vscode": "^1.44.0",
+		"lodash": "^4.17.20",
 		"vscode-test": "^1.3.0"
 	}
 }

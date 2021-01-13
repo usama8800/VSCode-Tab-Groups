@@ -26,20 +26,21 @@ export class ActiveEditorTracker extends Disposable {
         }, 100));
     }
 
-    async awaitClose(): Promise<void> {
-        await this.close();
-        return await new Promise(resolve => setTimeout(() => {
-            resolve();
-        }, 100));
+    async reopen(): Promise<void> {
+        return commands.executeCommand(BuiltInCommands.ReopenClosedEditor)
     }
 
-    async awaitNext(timeout: number = 300): Promise<TextEditor> {
+    async awaitNext(timeout: number = 300): Promise<TextEditor | undefined> {
         this.next();
         return this.wait(timeout);
     }
 
-    async close(): Promise<{} | undefined> {
+    async close(): Promise<void> {
         return commands.executeCommand(BuiltInCommands.CloseActiveEditor);
+    }
+
+    async closePinned(): Promise<void> {
+        return commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
     }
 
     async closeAll(): Promise<{} | undefined> {
@@ -50,8 +51,8 @@ export class ActiveEditorTracker extends Disposable {
         return commands.executeCommand(BuiltInCommands.NextEditor);
     }
 
-    async wait(timeout: number = 300): Promise<TextEditor> {
-        const editor = await new Promise<TextEditor>((resolve, reject) => {
+    async wait(timeout: number = 300): Promise<TextEditor | undefined> {
+        const editor = await new Promise<TextEditor | undefined>(resolve => {
             let timer: any;
 
             this._resolver = (editor: TextEditor) => {

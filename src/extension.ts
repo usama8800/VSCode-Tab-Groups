@@ -291,14 +291,15 @@ async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
-	group.list.forEach(async editor => {
+	for (const editor of group.list) {
 		try {
 			await vscode.window.showTextDocument(editor.document, {
 				preview: false,
 				viewColumn: editor.viewColumn
 			});
+			if (editor.pinned) await vscode.commands.executeCommand('workbench.action.pinEditor');
 		} catch { }
-	});
+	}
 
 	const focussed = group.list.find(editor => editor.focussed);
 	if (focussed) {
@@ -316,38 +317,47 @@ async function getListOfEditors(): Promise<Editor[]> {
 	const editorTracker = new ActiveEditorTracker();
 
 	const focussedEditor = vscode.window.activeTextEditor;
+	await commands.executeCommand(BuiltInCommands.FocusFirstEditorGroup);
 	await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
 	let active = vscode.window.activeTextEditor;
 	let editor = active;
-	const openEditors: (vscode.TextEditor | undefined)[] = [];
+	const openEditors: { editor: vscode.TextEditor, pinned: boolean }[] = [];
 	do {
-		if (editor !== null) {
-			// If we didn't start with a valid editor, set one once we find it
-			if (active === undefined) {
-				active = editor;
-			}
-			if (active === undefined) {
-				break;
-			}
-
-			openEditors.push(editor);
+		if (editor) {
+			await editorTracker.close();
+			await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
+			const pinned = TextEditorComparer.equals(editor, vscode.window.activeTextEditor);
+			openEditors.push({ editor: editor as any, pinned });
+			if (pinned) await editorTracker.closePinned();
 		}
 
-		editor = await editorTracker.awaitNext(500);
-		if (editor !== undefined &&
-			openEditors.some(_ => TextEditorComparer.equals(_, editor, { useId: true, usePosition: true }))) { break; }
+		await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
+		editor = vscode.window.activeTextEditor;
+		if (editor === undefined) editor = await editorTracker.awaitNext();
+		if (editor === undefined ||
+			openEditors.some(_ => TextEditorComparer.equals(_.editor, editor, { useId: true, usePosition: true }))) { break; }
 	} while ((active === undefined && editor === undefined) ||
 		!TextEditorComparer.equals(active, editor, { useId: true, usePosition: true }));
 	editorTracker.dispose();
 
+	for (const editor of openEditors) {
+		try {
+			await vscode.window.showTextDocument(editor.editor.document, {
+				preview: false,
+				viewColumn: editor.editor.viewColumn
+			});
+			if (editor.pinned) await vscode.commands.executeCommand('workbench.action.pinEditor');
+		} catch { }
+	}
+
 	let ret: Editor[] = [];
-	for (let index = 0; index < openEditors.length; index++) {
-		const element = openEditors[index];
+	for (const element of openEditors) {
 		if (element) {
 			ret.push({
-				document: element.document,
-				viewColumn: element.viewColumn,
-				focussed: TextEditorComparer.equals(element, focussedEditor),
+				document: element.editor.document,
+				viewColumn: element.editor.viewColumn,
+				focussed: TextEditorComparer.equals(element.editor, focussedEditor),
+				pinned: element.pinned,
 			});
 		}
 	}
@@ -358,7 +368,8 @@ async function getListOfEditors(): Promise<Editor[]> {
 		await focusEditor({
 			document: focussedEditor.document,
 			focussed: true,
-			viewColumn: focussedEditor.viewColumn
+			viewColumn: focussedEditor.viewColumn,
+			pinned: false,
 		});
 	}
 	return ret;
@@ -372,13 +383,8 @@ async function focusEditor(focussed: Editor) {
 	do {
 		if (editor !== null) {
 			// If we didn't start with a valid editor, set one once we find it
-			if (active === undefined) {
-				active = editor;
-			}
-
-			if (active === undefined) {
-				break;
-			}
+			if (active === undefined) active = editor;
+			if (active === undefined) break;
 
 			openEditors.push(editor);
 		}
@@ -386,7 +392,7 @@ async function focusEditor(focussed: Editor) {
 		editor = await editorTracker.awaitNext(500);
 		if (editor !== undefined &&
 			openEditors.some(_ => TextEditorComparer.equals(_, editor, { useId: true, usePosition: true }))) { break; }
-		if (TextDocumentComparer.equals(editor.document, focussed.document) && editor.viewColumn === focussed.viewColumn) {
+		if (TextDocumentComparer.equals(editor?.document, focussed.document) && editor?.viewColumn === focussed.viewColumn) {
 			break;
 		}
 	} while ((active === undefined && editor === undefined) ||

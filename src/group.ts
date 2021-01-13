@@ -6,6 +6,7 @@ export interface Editor {
     document: vscode.TextDocument;
     viewColumn?: vscode.ViewColumn;
     focussed: boolean;
+    pinned: boolean;
 }
 export interface Group {
     name: string;
@@ -67,7 +68,7 @@ export class SplitTreeItem extends TreeItem {
     }
 
     getText() {
-        return `Group ${this.data.viewColumn}`;
+        return `Split ${this.data.viewColumn}`;
     }
 
     getGroupName(): string {
@@ -95,17 +96,16 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         try { // Try to use the decoded base64
             this.groups = JSON.parse(decoded);
             if (this.groups.length > 0 && this.groups[0].list.length > 0) {
-                const isWithoutViewColumn = !Object.keys(this.groups[0].list[0]).includes('viewColumn');
-                const isWithoutFocussed = !Object.keys(this.groups[0].list[0]).includes('focussed');
-                if (isWithoutViewColumn) {
+                const isWithoutPinned = !Object.keys(this.groups[0].list[0]).includes('pinned');
+                if (isWithoutPinned) {
                     this.groups = this.groups.map(group => ({
                         name: group.name,
-                        list: group.list.map(list => ({ document: (list as any), viewColumn: undefined, focussed: false }))
-                    }));
-                } else if (isWithoutFocussed) {
-                    this.groups = this.groups.map(group => ({
-                        name: group.name,
-                        list: group.list.map(list => ({ document: list.document, viewColumn: list.viewColumn, focussed: false }))
+                        list: group.list.map(list => ({
+                            document: list.document,
+                            viewColumn: list.viewColumn,
+                            focussed: list.focussed,
+                            pinned: false,
+                        }))
                     }));
                 }
             }
@@ -120,9 +120,9 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
             (element.getType() === TreeItemType.SPLIT ? element as SplitTreeItem : element).getText(),
             element.getCollapsibleState(),
         );
-        item.tooltip = element.getData();
         item.contextValue = element.getType();
         if (element.getType() === TreeItemType.FILE) {
+            item.tooltip = element.getData();
             item.command = {
                 command: 'extension.openFileFromView',
                 title: 'Open file',

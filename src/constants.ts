@@ -1,21 +1,9 @@
-'use strict';
-
-export const ExtensionId = 'restore-editors';
-export const ExtensionKey = 'restoreEditors';
-export const ExtensionOutputChannelName = 'RestoreEditors';
-export const QualifiedExtensionId = `eamodio.${ExtensionId}`;
-
-export type BuiltInCommands = 'vscode.open' | 'setContext' | 'workbench.action.closeActiveEditor' | 'workbench.action.nextEditor';
 export const BuiltInCommands = {
-    CloseActiveEditor: 'workbench.action.closeActiveEditor' as BuiltInCommands,
-    CloseAllEditorGroups: 'workbench.action.closeAllGroups' as BuiltInCommands,
-    NextEditor: 'workbench.action.nextEditor' as BuiltInCommands,
-    ViewFirstEditor: 'workbench.action.firstEditorInGroup' as BuiltInCommands,
-    Open: 'vscode.open' as BuiltInCommands,
-    SetContext: 'setContext' as BuiltInCommands,
-};
-
-export type WorkspaceState = 'restoreEditors:documents';
-export const WorkspaceState = {
-    SavedDocuments: 'restoreEditors:documents' as WorkspaceState
+    CloseActiveEditor: 'workbench.action.closeActiveEditor',
+    CloseActivePinnedEditor: 'workbench.action.closeActivePinnedEditor',
+    CloseAllEditorGroups: 'workbench.action.closeAllGroups',
+    NextEditor: 'workbench.action.nextEditor',
+    FocusFirstEditorGroup: 'workbench.action.focusFirstEditorGroup',
+    ViewFirstEditor: 'workbench.action.firstEditorInGroup',
+    ReopenClosedEditor: 'workbench.action.reopenClosedEditor',
 };

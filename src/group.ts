@@ -126,7 +126,12 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
             item.command = {
                 command: 'extension.openFileFromView',
                 title: 'Open file',
-                tooltip: 'test',
+                arguments: [element]
+            };
+        } else if (element.getType() === TreeItemType.GROUP) {
+            item.command = {
+                command: 'extension.restoreGroupFromView',
+                title: 'Restore group',
                 arguments: [element]
             };
         }

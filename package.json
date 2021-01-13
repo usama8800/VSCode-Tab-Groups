@@ -65,8 +65,7 @@
 				},
 				{
 					"when": "view == tab-groups-groups && viewItem == group",
-					"command": "extension.restoreGroupFromView",
-					"group": "inline"
+					"command": "extension.restoreGroupFromView"
 				},
 				{
 					"when": "view == tab-groups-groups && viewItem == group",

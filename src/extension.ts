@@ -3,7 +3,7 @@ import { commands } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextDocumentComparer, TextEditorComparer } from './comparers';
 import { BuiltInCommands } from './constants';
-import { Editor, Group, Groups, SplitTreeItem, TreeItem, TreeItemType } from './group';
+import { Editor, Group, Groups, GroupTreeItem, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
 let groups = new Groups();
@@ -71,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
-			const groupName = item.getText();
+			const groupName = (item as GroupTreeItem).getName();
 
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
@@ -91,7 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
-			const groupName = item.getText();
+			const groupName = (item as GroupTreeItem).getName();
 
 			const action: string = vscode.workspace.getConfiguration().get('tab-groups.sidebarRestoreStyle', 'Keep others');
 			if (action.startsWith('Update current;') && groupName !== latestGroup) {
@@ -125,7 +125,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
-			const groupName = item.getText();
+			const groupName = (item as GroupTreeItem).getName();
 
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
@@ -167,8 +167,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
-
-			const groupName = item.getText();
+			const groupName = (item as GroupTreeItem).getName();
 			if (groupName === undefined) { return; }
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
@@ -219,11 +218,17 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 		vscode.commands.registerCommand('extension.undo', () => groups.undo()),
 		vscode.commands.registerCommand('extension.undoFromView', (item: TreeItem) => groups.undo()),
+		vscode.commands.registerCommand('extension.trackGroup', () => groups.track(latestGroup)),
+		vscode.commands.registerCommand('extension.trackGroupFromView', () => groups.track(latestGroup)),
+		vscode.commands.registerCommand('extension.stopTrackingGroup', () => stopTrackingGroup()),
+		vscode.commands.registerCommand('extension.stopTrackingGroupFromView', () => stopTrackingGroup()),
 	];
 	context.subscriptions.concat(disposables);
 }
 
-export function deactivate() { }
+export function deactivate() {
+	stopTrackingGroup();
+}
 
 function initGitBranchGroups(git: API) {
 	if (git.repositories.length === 0) { return; }
@@ -243,6 +248,11 @@ function initGitBranchGroups(git: API) {
 		}
 		latestBranch = repo.state.HEAD?.name;
 	});
+}
+
+async function stopTrackingGroup() {
+	const update = groups.track('');
+	if (update) await updateGroup(update?.name);
 }
 
 async function updateGroup(group: string) {
@@ -288,6 +298,7 @@ async function saveGroup(): Promise<boolean> {
 }
 
 async function restoreGroup(groupName: string | undefined) {
+	await stopTrackingGroup();
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
@@ -308,6 +319,7 @@ async function restoreGroup(groupName: string | undefined) {
 }
 
 async function closeAllEditors(): Promise<void> {
+	await stopTrackingGroup();
 	const editorTracker = new ActiveEditorTracker();
 	await editorTracker.awaitCloseAll();
 	editorTracker.dispose();

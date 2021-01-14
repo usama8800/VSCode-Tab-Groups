@@ -58,6 +58,22 @@ export class TreeItem {
     }
 }
 
+export class GroupTreeItem extends TreeItem {
+    constructor(name: string, tracking: boolean) {
+        super(TreeItemType.GROUP, {
+            name, tracking
+        });
+    }
+
+    getText() {
+        return this.data.tracking ? `${this.data.name} 📌` : this.data.name;
+    }
+
+    getName() {
+        return this.data.name;
+    }
+}
+
 export class SplitTreeItem extends TreeItem {
 
     constructor(groupName: string, parent: TreeItem, viewColumn?: vscode.ViewColumn) {
@@ -87,6 +103,7 @@ export class SplitTreeItem extends TreeItem {
 export class Groups implements vscode.TreeDataProvider<TreeItem>{
     groups: Group[];
     undoStack: Group[][];
+    private _tracking = '';
 
     constructor() {
         const base64 = vscode.workspace.getConfiguration().get('tab-groups.groups', '');
@@ -144,11 +161,12 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
 
     getChildren(element?: TreeItem): vscode.ProviderResult<TreeItem[]> {
         if (element === undefined) {
-            return this.groups.sort((a, b) => a.name.localeCompare(b.name)).map(group => new TreeItem(TreeItemType.GROUP, group.name));
+            return this.groups.sort((a, b) => a.name.localeCompare(b.name)).map(
+                group => new GroupTreeItem(group.name, this._tracking === group.name));
         }
 
         if (element.getType() === TreeItemType.GROUP) {
-            const group = this.groups.find(group => group.name === element.getText());
+            const group = this.groups.find(group => group.name === (element as GroupTreeItem).getName());
             if (group === undefined) { return []; }
 
             return group.list.reduce((prev, curr) => {
@@ -176,6 +194,14 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
 
     static branchGroupName(branch: string) {
         return `Branch: ${branch}`;
+    }
+
+    track(v: string) {
+        const currentGroup = this.groups.find(g => g.name === this._tracking);
+        this._tracking = v;
+        this._onDidChangeTreeData.fire();
+        if (!v) return currentGroup;
+        return undefined;
     }
 
     add(name: string, list: Editor[]) {

@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.0
+
+- Support pinned tabs
+- Track group (beta)
+- Rename split tree item from Group to Split
+
 ## 1.3.7
 
 - Add undo button

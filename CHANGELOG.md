@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.4.1
+
+- Add info message that pinned tabs are supported
+
 ## 1.4.0
 
 - Support pinned tabs

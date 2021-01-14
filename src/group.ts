@@ -115,6 +115,7 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
             if (this.groups.length > 0 && this.groups[0].list.length > 0) {
                 const isWithoutPinned = !Object.keys(this.groups[0].list[0]).includes('pinned');
                 if (isWithoutPinned) {
+                    vscode.window.showInformationMessage('Tab Groups now supports pinned tabs');
                     this.groups = this.groups.map(group => ({
                         name: group.name,
                         list: group.list.map(list => ({

@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.4.3
+
+- Fix new git branches not being saved
+
 ## 1.4.2
 
 - No duplicate group names allowed

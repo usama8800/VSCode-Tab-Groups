@@ -26,8 +26,8 @@ class TextDocumentComparer extends Comparer<TextDocument> {
 }
 
 class TextEditorComparer extends Comparer<TextEditor> {
-
-    equals(lhs: TextEditor | undefined, rhs: TextEditor | undefined, options: { useId: boolean, usePosition: boolean } = { useId: false, usePosition: false }) {
+    equals(lhs: TextEditor | undefined, rhs: TextEditor | undefined,
+        options: { useId: boolean, usePosition: boolean } = { useId: false, usePosition: false }) {
         if (lhs === undefined && rhs === undefined) { return true; }
         if (lhs === undefined || rhs === undefined) { return false; }
 

@@ -1,5 +1,4 @@
 
-'use strict';
 import { commands, Disposable, TextEditor, window } from 'vscode';
 import { BuiltInCommands } from './constants';
 
@@ -27,10 +26,10 @@ export class ActiveEditorTracker extends Disposable {
     }
 
     async reopen(): Promise<void> {
-        return commands.executeCommand(BuiltInCommands.ReopenClosedEditor)
+        return commands.executeCommand(BuiltInCommands.ReopenClosedEditor);
     }
 
-    async awaitNext(timeout: number = 300): Promise<TextEditor | undefined> {
+    async awaitNext(timeout = 300): Promise<TextEditor | undefined> {
         this.next();
         return this.wait(timeout);
     }
@@ -43,15 +42,15 @@ export class ActiveEditorTracker extends Disposable {
         return commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
     }
 
-    async closeAll(): Promise<{} | undefined> {
+    async closeAll(): Promise<unknown | undefined> {
         return commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
     }
 
-    async next(): Promise<{} | undefined> {
+    async next(): Promise<unknown | undefined> {
         return commands.executeCommand(BuiltInCommands.NextEditor);
     }
 
-    async wait(timeout: number = 300): Promise<TextEditor | undefined> {
+    async wait(timeout = 300): Promise<TextEditor | undefined> {
         const editor = await new Promise<TextEditor | undefined>(resolve => {
             let timer: any;
 

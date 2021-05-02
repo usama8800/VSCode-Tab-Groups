@@ -7,3 +7,9 @@ export const BuiltInCommands = {
     ViewFirstEditor: 'workbench.action.firstEditorInGroup',
     ReopenClosedEditor: 'workbench.action.reopenClosedEditor',
 };
+
+export enum GitBranchGroups {
+    SaveAndRestore = 'Save and Restore',
+    SaveOnly = 'Save only',
+    Nothing = 'Nothing',
+}

@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { commands } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextDocumentComparer, TextEditorComparer } from './comparers';
-import { BuiltInCommands } from './constants';
-import { Editor, Group, Groups, GroupTreeItem, SplitTreeItem, TreeItem, TreeItemType } from './group';
+import { BuiltInCommands, GitBranchGroups } from './constants';
+import { Editor, Groups, GroupTreeItem, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
 let groups = new Groups();
@@ -14,25 +14,25 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
 	const git = gitExtension?.getAPI(1);
-	let gitBranchGroups: boolean = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups', true);
+	let gitBranchGroups = vscode.workspace.getConfiguration().get<GitBranchGroups>('tab-groups.gitBranchGroups', GitBranchGroups.SaveAndRestore);
 	let repoOnDidChangeDisposable: vscode.Disposable | undefined;
 
-	if (git?.state === 'initialized' && gitBranchGroups) {
-		repoOnDidChangeDisposable = initGitBranchGroups(git);
+	if (git?.state === 'initialized' && gitBranchGroups !== GitBranchGroups.Nothing) {
+		repoOnDidChangeDisposable = initGitBranchGroups(git, gitBranchGroups);
 	}
 
 	git?.onDidChangeState(e => {
-		if (e === 'initialized' && gitBranchGroups) {
-			repoOnDidChangeDisposable = initGitBranchGroups(git);
+		if (e === 'initialized' && gitBranchGroups !== GitBranchGroups.Nothing) {
+			repoOnDidChangeDisposable = initGitBranchGroups(git, gitBranchGroups);
 		} else {
 			repoOnDidChangeDisposable?.dispose();
 		}
 	});
 	vscode.workspace.onDidChangeConfiguration(change => {
 		if (change.affectsConfiguration('tab-groups.gitBranchGroups') && git) {
-			gitBranchGroups = vscode.workspace.getConfiguration().get('tab-groups.gitBranchGroups', true);
-			if (gitBranchGroups) {
-				repoOnDidChangeDisposable = initGitBranchGroups(git);
+			gitBranchGroups = vscode.workspace.getConfiguration().get<GitBranchGroups>('tab-groups.gitBranchGroups', GitBranchGroups.SaveAndRestore);
+			if (gitBranchGroups !== GitBranchGroups.Nothing) {
+				repoOnDidChangeDisposable = initGitBranchGroups(git, gitBranchGroups);
 			} else {
 				repoOnDidChangeDisposable?.dispose();
 			}
@@ -194,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (item.getType() !== TreeItemType.FILE) {
 				return;
 			}
-			let group: Group | undefined;
+			let group: Editor[] | undefined;
 
 			let parent = item.getParent();
 			if (parent?.getType() === TreeItemType.GROUP) {
@@ -208,7 +208,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			if (!group) { return; }
 
-			const editor = group.list.find(e => e.document.fileName === item.getData());
+			const editor = group.find(e => e.document.fileName === item.getData());
 			if (!editor) { return; }
 
 			vscode.window.showTextDocument(editor.document, {
@@ -230,20 +230,27 @@ export function deactivate() {
 	stopTrackingGroup();
 }
 
-function initGitBranchGroups(git: API) {
+function initGitBranchGroups(git: API, option: GitBranchGroups) {
 	if (git.repositories.length === 0) { return; }
 
 	const repo = git.repositories[0];
 	latestBranch = repo.state.HEAD?.name;
+
+	if (option as any === true || option as any === false) {
+		vscode.window.showErrorMessage('tab-groups.gitBranchGroups needs to be updated');
+		return repo.state.onDidChange(() => { });
+	}
 
 	return repo.state.onDidChange(async () => {
 		if (repo.state.HEAD?.name !== latestBranch) {
 			if (latestBranch) {
 				await updateGroup(Groups.branchGroupName(latestBranch));
 			}
-			await closeAllEditors();
-			if (repo.state.HEAD?.name) {
-				await restoreGroup(Groups.branchGroupName(repo.state.HEAD?.name));
+			if (option === GitBranchGroups.SaveAndRestore) {
+				await closeAllEditors();
+				if (repo.state.HEAD?.name) {
+					await restoreGroup(Groups.branchGroupName(repo.state.HEAD?.name));
+				}
 			}
 		}
 		latestBranch = repo.state.HEAD?.name;
@@ -252,14 +259,15 @@ function initGitBranchGroups(git: API) {
 
 async function stopTrackingGroup() {
 	const update = groups.track('');
-	if (update) await updateGroup(update?.name);
+	if (update) await updateGroup(groups.tracking);
 }
 
 async function updateGroup(group: string) {
 	if (group === undefined) { return; }
-	groups.remove(group, true);
-	const openEditors = await getListOfEditors();
-	groups.add(group, openEditors.filter(e => e));
+	if (groups.remove(group, true)) {
+		const openEditors = await getListOfEditors();
+		groups.add(group, openEditors.filter(e => e));
+	}
 }
 
 function renameGroup(oldName: string, newName: string) {
@@ -302,7 +310,7 @@ async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
-	for (const editor of group.list) {
+	for (const editor of group) {
 		try {
 			await vscode.window.showTextDocument(editor.document, {
 				preview: false,
@@ -312,7 +320,7 @@ async function restoreGroup(groupName: string | undefined) {
 		} catch { }
 	}
 
-	const focussed = group.list.find(editor => editor.focussed);
+	const focussed = group.find(editor => editor.focussed);
 	if (focussed) {
 		await focusEditor(focussed);
 	}

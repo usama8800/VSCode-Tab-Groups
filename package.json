@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "1.4.1",
+	"version": "1.4.2",
 	"categories": [
 		"Other"
 	],
@@ -256,10 +256,15 @@
 						"default": true
 					},
 					"tab-groups.gitBranchGroups": {
-						"type": "boolean",
+						"type": "string",
 						"scope": "window",
 						"description": "When changing git branches, save and restore groups automatically",
-						"default": true
+						"default": "Save and Restore",
+						"enum": [
+							"Save and Restore",
+							"Save only",
+							"Nothing"
+						]
 					},
 					"tab-groups.sidebarRestoreStyle": {
 						"type": "string",

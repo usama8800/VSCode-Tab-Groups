@@ -1,5 +1,13 @@
 # Change Log
 
+## 1.4.2
+
+- No duplicate group names allowed
+- More options for changing git branches
+    1. Save and Restore
+    1. Save only
+    1. Nothing
+
 ## 1.4.1
 
 - Add info message that pinned tabs are supported

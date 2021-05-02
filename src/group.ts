@@ -1,16 +1,13 @@
-import { cloneDeep } from 'lodash';
+import { cloneDeep, set, unset } from 'lodash';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import _ = require('lodash');
 
 export interface Editor {
     document: vscode.TextDocument;
     viewColumn?: vscode.ViewColumn;
     focussed: boolean;
     pinned: boolean;
-}
-export interface Group {
-    name: string;
-    list: Editor[];
 }
 
 export enum TreeItemType {
@@ -101,31 +98,23 @@ export class SplitTreeItem extends TreeItem {
 }
 
 export class Groups implements vscode.TreeDataProvider<TreeItem>{
-    groups: Group[];
-    undoStack: Group[][];
+    groups: { [key: string]: Editor[] };
+    undoStack: { [key: string]: Editor[] }[];
     private _tracking = '';
 
     constructor() {
         const base64 = vscode.workspace.getConfiguration().get('tab-groups.groups', '');
         const decoded = Buffer.from(base64, 'base64').toString('ascii');
-        this.groups = [];
+        this.groups = {};
         this.undoStack = [];
         try { // Try to use the decoded base64
             this.groups = JSON.parse(decoded);
-            if (this.groups.length > 0 && this.groups[0].list.length > 0) {
-                const isWithoutPinned = !Object.keys(this.groups[0].list[0]).includes('pinned');
-                if (isWithoutPinned) {
-                    vscode.window.showInformationMessage('Tab Groups now supports pinned tabs');
-                    this.groups = this.groups.map(group => ({
-                        name: group.name,
-                        list: group.list.map(list => ({
-                            document: list.document,
-                            viewColumn: list.viewColumn,
-                            focussed: list.focussed,
-                            pinned: false,
-                        }))
-                    }));
+            if (this.groups instanceof Array) {
+                const tempGroups: any = {};
+                for (const { name, list } of this.groups) {
+                    tempGroups[name] = list;
                 }
+                this.groups = tempGroups;
             }
         } catch { } // Base64 decoded was not valid
     }
@@ -162,19 +151,20 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
 
     getChildren(element?: TreeItem): vscode.ProviderResult<TreeItem[]> {
         if (element === undefined) {
-            return this.groups.sort((a, b) => a.name.localeCompare(b.name)).map(
-                group => new GroupTreeItem(group.name, this._tracking === group.name));
+            return Object.keys(this.groups).sort((a, b) => a.localeCompare(b)).map(
+                name => new GroupTreeItem(name, this._tracking === name));
         }
 
         if (element.getType() === TreeItemType.GROUP) {
-            const group = this.groups.find(group => group.name === (element as GroupTreeItem).getName());
+            const name = (element as GroupTreeItem).getName();
+            const group = this.groups[name];
             if (group === undefined) { return []; }
 
-            return group.list.reduce((prev, curr) => {
+            return group.reduce((prev, curr) => {
                 if (prev.find(item =>
                     item.getType() === TreeItemType.SPLIT &&
                     (item as SplitTreeItem).getViewColumn() === curr.viewColumn) === undefined) {
-                    prev.push(new SplitTreeItem(group.name, element, curr.viewColumn));
+                    prev.push(new SplitTreeItem(name, element, curr.viewColumn));
                 }
                 return prev;
             },
@@ -183,10 +173,10 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
 
         if (element.getType() === TreeItemType.SPLIT) {
             const e = element as SplitTreeItem;
-            const group = this.groups.find(group => group.name === e.getGroupName());
+            const group = this.groups[e.getGroupName()];
             if (group === undefined) { return []; }
 
-            return group.list.filter(editor => editor.viewColumn === e.getViewColumn()).map(editor => new TreeItem(TreeItemType.FILE,
+            return group.filter(editor => editor.viewColumn === e.getViewColumn()).map(editor => new TreeItem(TreeItemType.FILE,
                 editor.document.fileName,
                 element
             ));
@@ -197,8 +187,13 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         return `Branch: ${branch}`;
     }
 
+    get tracking(): string {
+        return this._tracking;
+    }
+
+
     track(v: string) {
-        const currentGroup = this.groups.find(g => g.name === this._tracking);
+        const currentGroup = this.groups[this._tracking];
         this._tracking = v;
         this._onDidChangeTreeData.fire();
         if (!v) return currentGroup;
@@ -207,30 +202,31 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
 
     add(name: string, list: Editor[]) {
         this.undoStack.push(cloneDeep(this.groups));
-        this.groups.push({ name, list });
+        this.groups[name] = list;
         this.saveToSettings();
     }
 
     remove(name: string, updating = false) {
+        if (this.groups[name] === undefined) return false;
         if (!updating) this.undoStack.push(cloneDeep(this.groups));
-        this.groups = this.groups.filter(g => g.name !== name);
+        unset(this.groups, name);
         this.saveToSettings();
+        return true;
     }
 
     rename(oldName: string, newName: string) {
         this.undoStack.push(cloneDeep(this.groups));
-        const old = this.groups.find(group => group.name === oldName);
-        if (old === undefined) { return; }
-        old.name = newName;
+        set(this.groups, newName, this.groups[oldName]);
+        unset(this.groups, oldName);
         this.saveToSettings();
     }
 
     removeFile(name: string, fileItem: TreeItem) {
-        const group = this.groups.find(group => group.name === name);
+        const group = this.groups[name];
         if (!group) { return; }
 
         this.undoStack.push(cloneDeep(this.groups));
-        group.list = group.list.filter(editor => !(
+        this.groups[name] = group.filter(editor => !(
             editor.document.fileName === fileItem.getData() &&
             editor.viewColumn === (fileItem.getParent() as SplitTreeItem).getViewColumn()
         ));
@@ -248,23 +244,23 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
     }
 
     removeViewColumn(name: string, viewColumn?: vscode.ViewColumn) {
-        const group = this.groups.find(group => group.name === name);
+        const group = this.groups[name];
         if (!group) { return; }
 
-        group.list = group.list.filter(editor => editor.viewColumn !== viewColumn);
+        this.groups[name] = group.filter(editor => editor.viewColumn !== viewColumn);
         this.saveToSettings();
     }
 
     get(name: string) {
-        return this.groups.find(g => g.name === name);
+        return this.groups[name];
     }
 
     listOfNames(): string[] {
-        return this.groups.map(g => g.name);
+        return Object.keys(this.groups);
     }
 
     length(): number {
-        return this.groups.length;
+        return Object.keys(this.groups).length;
     }
 
     newGroupName(): string {

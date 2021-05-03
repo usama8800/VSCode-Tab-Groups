@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.4.4
+
+- Fix no saved groups causing error
+
 ## 1.4.3
 
 - Fix new git branches not being saved

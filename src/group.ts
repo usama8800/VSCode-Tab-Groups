@@ -107,14 +107,16 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         const decoded = Buffer.from(base64, 'base64').toString('ascii');
         this.groups = {};
         this.undoStack = [];
-        this.groups = JSON.parse(decoded);
-        if (this.groups instanceof Array) {
-            const tempGroups: any = {};
-            for (const { name, list } of this.groups) {
-                tempGroups[name] = list;
+        try { // Try to use the decoded base64
+            this.groups = JSON.parse(decoded);
+            if (this.groups instanceof Array) {
+                const tempGroups: any = {};
+                for (const { name, list } of this.groups) {
+                    tempGroups[name] = list;
+                }
+                this.groups = tempGroups;
             }
-            this.groups = tempGroups;
-        }
+        } catch { } // Base64 decoded was not valid
     }
 
     private _onDidChangeTreeData = new vscode.EventEmitter<TreeItem | undefined>();

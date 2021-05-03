@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "1.4.3",
+	"version": "1.4.4",
 	"categories": [
 		"Other"
 	],
@@ -296,7 +296,7 @@
 	"devDependencies": {
 		"@types/lodash": "^4.14.165",
 		"@types/node": "^15.0.1",
-		"@types/vscode": "^1.44.0",
+		"@types/vscode": "^1.34.0",
 		"@typescript-eslint/eslint-plugin": "^4.22.0",
 		"@typescript-eslint/parser": "^4.0.0",
 		"eslint": "^7.25.0",

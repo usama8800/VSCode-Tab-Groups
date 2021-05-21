@@ -81,7 +81,7 @@ export function activate(context: ExtensionContext) {
 		}),
 		commands.registerCommand('extension.restoreGroup', async () => {
 			if (groups.length() === 0) {
-				window.showInformationMessage("No saved groups");
+				window.showInformationMessage('No saved groups');
 				return;
 			}
 			const groupName = await window.showQuickPick(groups.listOfNames());
@@ -143,7 +143,7 @@ export function activate(context: ExtensionContext) {
 		}),
 		commands.registerCommand('extension.clearAndRestoreGroup', async () => {
 			if (groups.length() === 0) {
-				window.showInformationMessage("No saved groups");
+				window.showInformationMessage('No saved groups');
 				return;
 			}
 			const groupName = await window.showQuickPick(groups.listOfNames());
@@ -154,7 +154,7 @@ export function activate(context: ExtensionContext) {
 		}),
 		commands.registerCommand('extension.deleteGroup', async () => {
 			if (groups.length() === 0) {
-				window.showInformationMessage("No saved groups");
+				window.showInformationMessage('No saved groups');
 				return;
 			}
 			const groupName = await window.showQuickPick(groups.listOfNames());
@@ -204,7 +204,7 @@ export function activate(context: ExtensionContext) {
 			} else {
 				parent = parent?.getParent();
 				if (parent?.getType() === TreeItemType.GROUP) {
-					group = groups.get(parent.getData());
+					group = groups.get(parent.getData().name);
 				}
 			}
 
@@ -213,10 +213,31 @@ export function activate(context: ExtensionContext) {
 			const editor = group.find(e => e.document.fileName === item.getData());
 			if (!editor) { return; }
 
-			window.showTextDocument(editor.document, {
-				preview: false,
-				viewColumn: editor.viewColumn
-			});
+			try {
+				const openRelative = workspace.getConfiguration().get<boolean>('tab-groups.relativePaths', false);
+				let openRelativeSuccess = false;
+				if (openRelative && editor.workspaceIndex !== undefined && editor.path && workspace.workspaceFolders) {
+					const wsUri = workspace.workspaceFolders[editor.workspaceIndex].uri;
+					try {
+						await window.showTextDocument(Uri.parse(`${wsUri.scheme}://${wsUri.path}${path.sep}${editor.path}`), {
+							preview: false,
+							viewColumn: editor.viewColumn
+						});
+						openRelativeSuccess = true;
+					} catch (error) {
+						console.log(error);
+					}
+				}
+				if (!openRelativeSuccess) {
+					await window.showTextDocument(editor.document, {
+						preview: false,
+						viewColumn: editor.viewColumn
+					});
+				}
+				if (editor.pinned) await commands.executeCommand('workbench.action.pinEditor');
+			} catch (error) {
+				console.error(error);
+			}
 		}),
 		commands.registerCommand('extension.undo', () => groups.undo()),
 		commands.registerCommand('extension.undoFromView', (_item: TreeItem) => groups.undo()),
@@ -324,7 +345,9 @@ async function restoreGroup(groupName: string | undefined) {
 						viewColumn: editor.viewColumn
 					});
 					openRelativeSuccess = true;
-				} catch (error) { }
+				} catch (error) {
+					console.log(error);
+				}
 			}
 			if (!openRelativeSuccess) {
 				await window.showTextDocument(editor.document, {
@@ -358,24 +381,24 @@ async function getListOfEditors(): Promise<Editor[]> {
 	await commands.executeCommand(BuiltInCommands.FocusFirstEditorGroup);
 	await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
 	const active = window.activeTextEditor;
-	let editor = active;
+	let activeEditor = active;
 	const openEditors: { editor: TextEditor, pinned: boolean }[] = [];
 	do {
-		if (editor) {
+		if (activeEditor) {
 			await editorTracker.close();
 			await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-			const pinned = TextEditorComparer.equals(editor, window.activeTextEditor);
-			openEditors.push({ editor: editor as any, pinned });
+			const pinned = TextEditorComparer.equals(activeEditor, window.activeTextEditor);
+			openEditors.push({ editor: activeEditor as any, pinned });
 			if (pinned) await editorTracker.closePinned();
 		}
 
 		await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-		editor = window.activeTextEditor;
-		if (editor === undefined) editor = await editorTracker.awaitNext();
-		if (editor === undefined ||
-			openEditors.some(_ => TextEditorComparer.equals(_.editor, editor, { useId: true, usePosition: true }))) { break; }
-	} while ((active === undefined && editor === undefined) ||
-		!TextEditorComparer.equals(active, editor, { useId: true, usePosition: true }));
+		activeEditor = window.activeTextEditor;
+		if (activeEditor === undefined) activeEditor = await editorTracker.awaitNext();
+		if (activeEditor === undefined ||
+			openEditors.some(_ => TextEditorComparer.equals(_.editor, activeEditor, { useId: true, usePosition: true }))) { break; }
+	} while ((active === undefined && activeEditor === undefined) ||
+		!TextEditorComparer.equals(active, activeEditor, { useId: true, usePosition: true }));
 	editorTracker.dispose();
 
 	for (const editor of openEditors) {
@@ -393,7 +416,7 @@ async function getListOfEditors(): Promise<Editor[]> {
 	let ret: Editor[] = [];
 	for (const element of openEditors) {
 		if (element) {
-			let uri = element.editor.document.uri;
+			const uri = element.editor.document.uri;
 			ret.push({
 				document: element.editor.document,
 				workspaceIndex: workspace.getWorkspaceFolder(uri)?.index,

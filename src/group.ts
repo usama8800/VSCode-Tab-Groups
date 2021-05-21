@@ -118,7 +118,9 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
                 }
                 this.groups = tempGroups;
             }
-        } catch { } // Base64 decoded was not valid
+        } catch {
+            console.log('Was not about to parse decoded Base64 as JSon');
+        } // Base64 decoded was not valid
     }
 
     private _onDidChangeTreeData = new vscode.EventEmitter<TreeItem | undefined>();

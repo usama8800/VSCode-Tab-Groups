@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.4.6
+
+- Fix file not opening from view
+
 ## 1.4.5
 
 - Add option for relative file path for sharing `tab-groups.groups` setting

@@ -14,11 +14,17 @@
     "rules": {
         "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
-        "no-empty": "off",
+        "no-empty": "warn",
         "semi": [
             "warn",
             "always"
         ],
+        "quotes": [
+            "warn",
+            "single"
+        ],
+        "no-shadow": "off",
+        "@typescript-eslint/no-shadow": "warn",
         "@typescript-eslint/no-empty-function": "off",
         "no-constant-condition": "off",
         "@typescript-eslint/no-unused-vars": [

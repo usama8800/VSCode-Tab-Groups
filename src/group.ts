@@ -199,7 +199,7 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
     track(v: string) {
         const currentGroup = this.groups[this._tracking];
         this._tracking = v;
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
         if (!v) return currentGroup;
         return undefined;
     }
@@ -275,6 +275,6 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         const global = vscode.workspace.getConfiguration().get('tab-groups.saveGlobally', false);
         const encoded = Buffer.from(JSON.stringify(this.groups)).toString('base64');
         vscode.workspace.getConfiguration().update('tab-groups.groups', encoded, global);
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 }

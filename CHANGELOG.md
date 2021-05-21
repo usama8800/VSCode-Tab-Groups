@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.4.7
+
+- Fix splits not being saved
+
 ## 1.4.6
 
 - Fix file not opening from view

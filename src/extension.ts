@@ -1,8 +1,8 @@
 import * as path from 'path';
 import { commands, Disposable, ExtensionContext, extensions, TextEditor, Uri, window, workspace } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
-import { TextDocumentComparer, TextEditorComparer } from './comparers';
-import { BuiltInCommands, GitBranchGroups } from './constants';
+import { TextEditorComparer } from './comparers';
+import { BuiltInCommands, Configurations, GitBranchGroups } from './constants';
 import { Editor, Groups, GroupTreeItem, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
@@ -15,7 +15,7 @@ export function activate(context: ExtensionContext) {
 	const gitExtension = extensions.getExtension<GitExtension>('git')?.exports;
 	const git = gitExtension?.getAPI(1);
 	let gitBranchGroups = workspace.getConfiguration().get<GitBranchGroups>
-		('tab-groups.gitBranchGroups', GitBranchGroups.SaveAndRestore);
+		(Configurations.GitBranchGroups, GitBranchGroups.SaveAndRestore);
 	let repoOnDidChangeDisposable: Disposable | undefined;
 
 	if (git?.state === 'initialized' && gitBranchGroups !== GitBranchGroups.Nothing) {
@@ -30,9 +30,9 @@ export function activate(context: ExtensionContext) {
 		}
 	});
 	workspace.onDidChangeConfiguration(change => {
-		if (change.affectsConfiguration('tab-groups.gitBranchGroups') && git) {
+		if (change.affectsConfiguration(Configurations.GitBranchGroups) && git) {
 			gitBranchGroups = workspace.getConfiguration().get<GitBranchGroups>
-				('tab-groups.gitBranchGroups', GitBranchGroups.SaveAndRestore);
+				(Configurations.GitBranchGroups, GitBranchGroups.SaveAndRestore);
 			if (gitBranchGroups !== GitBranchGroups.Nothing) {
 				repoOnDidChangeDisposable = initGitBranchGroups(git, gitBranchGroups);
 			} else {
@@ -95,7 +95,7 @@ export function activate(context: ExtensionContext) {
 			}
 			const groupName = (item as GroupTreeItem).getName();
 
-			const action: string = workspace.getConfiguration().get('tab-groups.sidebarRestoreStyle', 'Keep others');
+			const action: string = workspace.getConfiguration().get(Configurations.SidebarRestoreStyle, 'Keep others');
 			if (action.startsWith('Update current;') && groupName !== latestGroup) {
 				await updateGroup(latestGroup);
 			}
@@ -214,7 +214,7 @@ export function activate(context: ExtensionContext) {
 			if (!editor) { return; }
 
 			try {
-				const openRelative = workspace.getConfiguration().get<boolean>('tab-groups.relativePaths', false);
+				const openRelative = workspace.getConfiguration().get<boolean>(Configurations.RelativePaths, false);
 				let openRelativeSuccess = false;
 				if (openRelative && editor.workspaceIndex !== undefined && editor.path && workspace.workspaceFolders) {
 					const wsUri = workspace.workspaceFolders[editor.workspaceIndex].uri;
@@ -333,7 +333,7 @@ async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
-	const openRelative = workspace.getConfiguration().get<boolean>('tab-groups.relativePaths', false);
+	const openRelative = workspace.getConfiguration().get<boolean>(Configurations.RelativePaths, false);
 	for (const editor of group) {
 		try {
 			let openRelativeSuccess = false;
@@ -355,16 +355,14 @@ async function restoreGroup(groupName: string | undefined) {
 					viewColumn: editor.viewColumn
 				});
 			}
-			if (editor.pinned) await commands.executeCommand('workbench.action.pinEditor');
+			if (editor.pinned) await commands.executeCommand(BuiltInCommands.PinEditor);
 		} catch (error) {
 			console.error(error);
 		}
 	}
 
 	const focussed = group.find(editor => editor.focussed);
-	if (focussed) {
-		await focusEditor(focussed);
-	}
+	if (focussed) await window.showTextDocument(focussed.document, focussed.viewColumn);
 }
 
 async function closeAllEditors(): Promise<void> {
@@ -375,43 +373,49 @@ async function closeAllEditors(): Promise<void> {
 }
 
 async function getListOfEditors(): Promise<Editor[]> {
-	const editorTracker = new ActiveEditorTracker();
-
-	const focussedEditor = window.activeTextEditor;
-	await commands.executeCommand(BuiltInCommands.FocusFirstEditorGroup);
-	await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-	const active = window.activeTextEditor;
-	let activeEditor = active;
+	await workspace.getConfiguration().update(Configurations.CloseEmptyGroups, false, false);
+	const focussed = window.activeTextEditor;
 	const openEditors: { editor: TextEditor, pinned: boolean }[] = [];
-	do {
-		if (activeEditor) {
-			await editorTracker.close();
-			await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-			const pinned = TextEditorComparer.equals(activeEditor, window.activeTextEditor);
-			openEditors.push({ editor: activeEditor as any, pinned });
-			if (pinned) await editorTracker.closePinned();
+	while (window.visibleTextEditors.length !== 0) {
+		// Remove already saved editors
+		const visibleEditors = window.visibleTextEditors.filter(e =>
+			!openEditors.some(oe => TextEditorComparer.equals(e, oe.editor, { useId: false, usePosition: true })));
+		// If all saved, only pinned remain with pinned = false
+		if (visibleEditors.length === 0) {
+			while (window.visibleTextEditors.length !== 0) {
+				// Find pinned editor not closed in the for loop below
+				const editor = openEditors.find(oe =>
+					TextEditorComparer.equals(oe.editor, window.visibleTextEditors[0], { useId: false, usePosition: true }));
+				if (editor) {
+					editor.pinned = true;
+					await window.showTextDocument(editor.editor.document, editor.editor.viewColumn);
+					await commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
+				} else {
+					window.showErrorMessage('There was a problem saving the pins on editors');
+					break;
+				}
+			}
+			break;
 		}
+		for (const editor of visibleEditors) {
+			await window.showTextDocument(editor.document, editor.viewColumn);
 
-		await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-		activeEditor = window.activeTextEditor;
-		if (activeEditor === undefined) activeEditor = await editorTracker.awaitNext();
-		if (activeEditor === undefined ||
-			openEditors.some(_ => TextEditorComparer.equals(_.editor, activeEditor, { useId: true, usePosition: true }))) { break; }
-	} while ((active === undefined && activeEditor === undefined) ||
-		!TextEditorComparer.equals(active, activeEditor, { useId: true, usePosition: true }));
-	editorTracker.dispose();
-
-	for (const editor of openEditors) {
-		try {
-			await window.showTextDocument(editor.editor.document, {
-				preview: false,
-				viewColumn: editor.editor.viewColumn
-			});
-			if (editor.pinned) await commands.executeCommand('workbench.action.pinEditor');
-		} catch (error) {
-			console.error(error);
+			const closed = await commands.executeCommand(BuiltInCommands.CloseActiveEditor);
+			// Not perfect. Doesn't return true if only pinned editor in group
+			const pinned = closed === null;
+			if (pinned) {
+				await window.showTextDocument(editor.document, editor.viewColumn);
+				await commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
+			}
+			openEditors.push({ editor, pinned });
 		}
 	}
+	for (const editor of openEditors) {
+		await window.showTextDocument(editor.editor.document, { preview: false, viewColumn: editor.editor.viewColumn });
+		if (editor.pinned) await commands.executeCommand(BuiltInCommands.PinEditor);
+	}
+	if (focussed) await window.showTextDocument(focussed.document, focussed.viewColumn);
+	await workspace.getConfiguration().update(Configurations.CloseEmptyGroups, undefined, false);
 
 	let ret: Editor[] = [];
 	for (const element of openEditors) {
@@ -422,7 +426,7 @@ async function getListOfEditors(): Promise<Editor[]> {
 				workspaceIndex: workspace.getWorkspaceFolder(uri)?.index,
 				path: workspace.asRelativePath(uri, false),
 				viewColumn: element.editor.viewColumn,
-				focussed: TextEditorComparer.equals(element.editor, focussedEditor),
+				focussed: TextEditorComparer.equals(element.editor, window.activeTextEditor, { useId: false, usePosition: true }),
 				pinned: element.pinned,
 			});
 		}
@@ -430,38 +434,5 @@ async function getListOfEditors(): Promise<Editor[]> {
 
 	// Sort by viewcolumn
 	ret = ret.sort((a, b) => parseInt(a.viewColumn?.toString() ?? '0') - parseInt(b.viewColumn?.toString() ?? '0'));
-	if (focussedEditor) {
-		await focusEditor({
-			document: focussedEditor.document,
-			focussed: true,
-			viewColumn: focussedEditor.viewColumn,
-			pinned: false,
-		});
-	}
 	return ret;
-}
-
-async function focusEditor(focussed: Editor) {
-	const editorTracker = new ActiveEditorTracker();
-	let active = window.activeTextEditor;
-	let editor = active;
-	const openEditors = [];
-	do {
-		if (editor !== null) {
-			// If we didn't start with a valid editor, set one once we find it
-			if (active === undefined) active = editor;
-			if (active === undefined) break;
-
-			openEditors.push(editor);
-		}
-
-		editor = await editorTracker.awaitNext(500);
-		if (editor !== undefined &&
-			openEditors.some(_ => TextEditorComparer.equals(_, editor, { useId: true, usePosition: true }))) { break; }
-		if (TextDocumentComparer.equals(editor?.document, focussed.document) && editor?.viewColumn === focussed.viewColumn) {
-			break;
-		}
-	} while ((active === undefined && editor === undefined) ||
-		!TextEditorComparer.equals(active, editor, { useId: true, usePosition: true }));
-	editorTracker.dispose();
 }

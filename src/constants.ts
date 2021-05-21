@@ -6,6 +6,14 @@ export const BuiltInCommands = {
     FocusFirstEditorGroup: 'workbench.action.focusFirstEditorGroup',
     ViewFirstEditor: 'workbench.action.firstEditorInGroup',
     ReopenClosedEditor: 'workbench.action.reopenClosedEditor',
+    PinEditor: 'workbench.action.pinEditor',
+};
+
+export const Configurations = {
+    CloseEmptyGroups: 'workbench.editor.closeEmptyGroups',
+    GitBranchGroups: 'tab-groups.gitBranchGroups',
+    SidebarRestoreStyle: 'tab-groups.sidebarRestoreStyle',
+    RelativePaths: 'tab-groups.relativePaths',
 };
 
 export enum GitBranchGroups {

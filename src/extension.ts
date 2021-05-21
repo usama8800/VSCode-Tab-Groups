@@ -1,5 +1,4 @@
-import * as vscode from 'vscode';
-import { commands } from 'vscode';
+import { commands, Disposable, ExtensionContext, extensions, TextEditor, window, workspace } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextDocumentComparer, TextEditorComparer } from './comparers';
 import { BuiltInCommands, GitBranchGroups } from './constants';
@@ -10,13 +9,13 @@ const groups = new Groups();
 let latestGroup: string;
 let latestBranch: string | undefined;
 
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: ExtensionContext) {
 
-	const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
+	const gitExtension = extensions.getExtension<GitExtension>('git')?.exports;
 	const git = gitExtension?.getAPI(1);
-	let gitBranchGroups = vscode.workspace.getConfiguration().get<GitBranchGroups>
+	let gitBranchGroups = workspace.getConfiguration().get<GitBranchGroups>
 		('tab-groups.gitBranchGroups', GitBranchGroups.SaveAndRestore);
-	let repoOnDidChangeDisposable: vscode.Disposable | undefined;
+	let repoOnDidChangeDisposable: Disposable | undefined;
 
 	if (git?.state === 'initialized' && gitBranchGroups !== GitBranchGroups.Nothing) {
 		repoOnDidChangeDisposable = initGitBranchGroups(git, gitBranchGroups);
@@ -29,9 +28,9 @@ export function activate(context: vscode.ExtensionContext) {
 			repoOnDidChangeDisposable?.dispose();
 		}
 	});
-	vscode.workspace.onDidChangeConfiguration(change => {
+	workspace.onDidChangeConfiguration(change => {
 		if (change.affectsConfiguration('tab-groups.gitBranchGroups') && git) {
-			gitBranchGroups = vscode.workspace.getConfiguration().get<GitBranchGroups>
+			gitBranchGroups = workspace.getConfiguration().get<GitBranchGroups>
 				('tab-groups.gitBranchGroups', GitBranchGroups.SaveAndRestore);
 			if (gitBranchGroups !== GitBranchGroups.Nothing) {
 				repoOnDidChangeDisposable = initGitBranchGroups(git, gitBranchGroups);
@@ -40,17 +39,17 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 	});
-	vscode.window.registerTreeDataProvider('tab-groups-groups', groups);
+	window.registerTreeDataProvider('tab-groups-groups', groups);
 
 	const disposables = [
-		vscode.commands.registerCommand('extension.saveGroup', saveGroup),
-		vscode.commands.registerCommand('extension.clearAndSaveGroup', async () => {
+		commands.registerCommand('extension.saveGroup', saveGroup),
+		commands.registerCommand('extension.clearAndSaveGroup', async () => {
 			const success = await saveGroup();
 			if (!success) { return; }
 			await closeAllEditors();
 		}),
-		vscode.commands.registerCommand('extension.updateGroup', async () => {
-			const name = await vscode.window.showQuickPick(groups.listOfNames(), {
+		commands.registerCommand('extension.updateGroup', async () => {
+			const name = await window.showQuickPick(groups.listOfNames(), {
 				canPickMany: false,
 				placeHolder: 'Which tab group would you like to update?',
 			});
@@ -58,14 +57,14 @@ export function activate(context: vscode.ExtensionContext) {
 			latestGroup = name;
 			updateGroup(name);
 		}),
-		vscode.commands.registerCommand('extension.updateLastGroup', async () => {
+		commands.registerCommand('extension.updateLastGroup', async () => {
 			if (!latestGroup) {
-				vscode.window.showWarningMessage('No last group');
+				window.showWarningMessage('No last group');
 				return;
 			}
 			updateGroup(latestGroup);
 		}),
-		vscode.commands.registerCommand('extension.saveGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand('extension.saveGroupFromView', async (item: TreeItem) => {
 			if (item === undefined) {
 				return saveGroup();
 			}
@@ -79,23 +78,23 @@ export function activate(context: vscode.ExtensionContext) {
 			latestGroup = groupName;
 			await updateGroup(groupName);
 		}),
-		vscode.commands.registerCommand('extension.restoreGroup', async () => {
+		commands.registerCommand('extension.restoreGroup', async () => {
 			if (groups.length() === 0) {
-				vscode.window.showInformationMessage("No saved groups");
+				window.showInformationMessage("No saved groups");
 				return;
 			}
-			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
+			const groupName = await window.showQuickPick(groups.listOfNames());
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
 			await restoreGroup(groupName);
 		}),
-		vscode.commands.registerCommand('extension.restoreGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand('extension.restoreGroupFromView', async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
 			const groupName = (item as GroupTreeItem).getName();
 
-			const action: string = vscode.workspace.getConfiguration().get('tab-groups.sidebarRestoreStyle', 'Keep others');
+			const action: string = workspace.getConfiguration().get('tab-groups.sidebarRestoreStyle', 'Keep others');
 			if (action.startsWith('Update current;') && groupName !== latestGroup) {
 				await updateGroup(latestGroup);
 			}
@@ -107,14 +106,14 @@ export function activate(context: vscode.ExtensionContext) {
 			latestGroup = groupName;
 			await restoreGroup(groupName);
 		}),
-		vscode.commands.registerCommand('extension.renameGroup', async (_item: TreeItem) => {
-			const oldName = await vscode.window.showQuickPick(groups.listOfNames(), {
+		commands.registerCommand('extension.renameGroup', async (_item: TreeItem) => {
+			const oldName = await window.showQuickPick(groups.listOfNames(), {
 				canPickMany: false,
 				placeHolder: 'Which tab group would you like to rename?',
 			});
 			if (oldName === undefined) { return; }
 
-			let name = await vscode.window.showInputBox({
+			let name = await window.showInputBox({
 				placeHolder: 'Enter name for group or empty for default name'
 			});
 			if (name === undefined) { return false; }
@@ -123,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			renameGroup(oldName, name);
 		}),
-		vscode.commands.registerCommand('extension.renameGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand('extension.renameGroupFromView', async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -132,7 +131,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
 
-			let name = await vscode.window.showInputBox({
+			let name = await window.showInputBox({
 				placeHolder: 'Enter name for group or empty for default name'
 			});
 			if (name === undefined) { return false; }
@@ -141,31 +140,31 @@ export function activate(context: vscode.ExtensionContext) {
 
 			renameGroup(groupName, name);
 		}),
-		vscode.commands.registerCommand('extension.clearAndRestoreGroup', async () => {
+		commands.registerCommand('extension.clearAndRestoreGroup', async () => {
 			if (groups.length() === 0) {
-				vscode.window.showInformationMessage("No saved groups");
+				window.showInformationMessage("No saved groups");
 				return;
 			}
-			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
+			const groupName = await window.showQuickPick(groups.listOfNames());
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
 			await closeAllEditors();
 			await restoreGroup(groupName);
 		}),
-		vscode.commands.registerCommand('extension.deleteGroup', async () => {
+		commands.registerCommand('extension.deleteGroup', async () => {
 			if (groups.length() === 0) {
-				vscode.window.showInformationMessage("No saved groups");
+				window.showInformationMessage("No saved groups");
 				return;
 			}
-			const groupName = await vscode.window.showQuickPick(groups.listOfNames());
+			const groupName = await window.showQuickPick(groups.listOfNames());
 			if (groupName === undefined) { return; }
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
 		}),
-		vscode.commands.registerCommand('extension.closeAllEditors', () => {
+		commands.registerCommand('extension.closeAllEditors', () => {
 			commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 		}),
-		vscode.commands.registerCommand('extension.deleteGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand('extension.deleteGroupFromView', async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -174,7 +173,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
 		}),
-		vscode.commands.registerCommand('extension.deleteEditorGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand('extension.deleteEditorGroupFromView', async (item: TreeItem) => {
 			if (item.getType() === TreeItemType.GROUP) {
 				return;
 			}
@@ -192,7 +191,7 @@ export function activate(context: vscode.ExtensionContext) {
 			if (isFile) { groups.removeFile(groupName, item); }
 			else { groups.removeViewColumn(groupName, (item as SplitTreeItem).getViewColumn()); }
 		}),
-		vscode.commands.registerCommand('extension.openFileFromView', async (item: TreeItem) => {
+		commands.registerCommand('extension.openFileFromView', async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.FILE) {
 				return;
 			}
@@ -213,17 +212,17 @@ export function activate(context: vscode.ExtensionContext) {
 			const editor = group.find(e => e.document.fileName === item.getData());
 			if (!editor) { return; }
 
-			vscode.window.showTextDocument(editor.document, {
+			window.showTextDocument(editor.document, {
 				preview: false,
 				viewColumn: editor.viewColumn
 			});
 		}),
-		vscode.commands.registerCommand('extension.undo', () => groups.undo()),
-		vscode.commands.registerCommand('extension.undoFromView', (_item: TreeItem) => groups.undo()),
-		vscode.commands.registerCommand('extension.trackGroup', () => groups.track(latestGroup)),
-		vscode.commands.registerCommand('extension.trackGroupFromView', () => groups.track(latestGroup)),
-		vscode.commands.registerCommand('extension.stopTrackingGroup', () => stopTrackingGroup()),
-		vscode.commands.registerCommand('extension.stopTrackingGroupFromView', () => stopTrackingGroup()),
+		commands.registerCommand('extension.undo', () => groups.undo()),
+		commands.registerCommand('extension.undoFromView', (_item: TreeItem) => groups.undo()),
+		commands.registerCommand('extension.trackGroup', () => groups.track(latestGroup)),
+		commands.registerCommand('extension.trackGroupFromView', () => groups.track(latestGroup)),
+		commands.registerCommand('extension.stopTrackingGroup', () => stopTrackingGroup()),
+		commands.registerCommand('extension.stopTrackingGroupFromView', () => stopTrackingGroup()),
 	];
 	context.subscriptions.concat(disposables);
 }
@@ -239,7 +238,7 @@ function initGitBranchGroups(git: API, option: GitBranchGroups) {
 	latestBranch = repo.state.HEAD?.name;
 
 	if (option as any === true || option as any === false) {
-		vscode.window.showErrorMessage('tab-groups.gitBranchGroups needs to be updated');
+		window.showErrorMessage('tab-groups.gitBranchGroups needs to be updated');
 		return repo.state.onDidChange(() => { });
 	}
 
@@ -277,7 +276,7 @@ function renameGroup(oldName: string, newName: string) {
 }
 
 async function saveGroup(): Promise<boolean> {
-	let name = await vscode.window.showInputBox({
+	let name = await window.showInputBox({
 		placeHolder: 'Enter name for group or empty for default name'
 	});
 	if (name === undefined) { return false; }
@@ -285,7 +284,7 @@ async function saveGroup(): Promise<boolean> {
 	if (name === '') { name = groups.newGroupName(); }
 
 	if (groups.listOfNames().includes(name)) {
-		const overwrite = await vscode.window.showInputBox({
+		const overwrite = await window.showInputBox({
 			placeHolder: 'Tab group already exists. Do you want to overwrite?',
 			validateInput: value => {
 				value = value.toLowerCase();
@@ -314,11 +313,11 @@ async function restoreGroup(groupName: string | undefined) {
 	if (!group) { return; }
 	for (const editor of group) {
 		try {
-			await vscode.window.showTextDocument(editor.document, {
+			await window.showTextDocument(editor.document, {
 				preview: false,
 				viewColumn: editor.viewColumn
 			});
-			if (editor.pinned) await vscode.commands.executeCommand('workbench.action.pinEditor');
+			if (editor.pinned) await commands.executeCommand('workbench.action.pinEditor');
 		} catch (error) {
 			console.error(error);
 		}
@@ -340,23 +339,23 @@ async function closeAllEditors(): Promise<void> {
 async function getListOfEditors(): Promise<Editor[]> {
 	const editorTracker = new ActiveEditorTracker();
 
-	const focussedEditor = vscode.window.activeTextEditor;
+	const focussedEditor = window.activeTextEditor;
 	await commands.executeCommand(BuiltInCommands.FocusFirstEditorGroup);
 	await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-	const active = vscode.window.activeTextEditor;
+	const active = window.activeTextEditor;
 	let editor = active;
-	const openEditors: { editor: vscode.TextEditor, pinned: boolean }[] = [];
+	const openEditors: { editor: TextEditor, pinned: boolean }[] = [];
 	do {
 		if (editor) {
 			await editorTracker.close();
 			await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-			const pinned = TextEditorComparer.equals(editor, vscode.window.activeTextEditor);
+			const pinned = TextEditorComparer.equals(editor, window.activeTextEditor);
 			openEditors.push({ editor: editor as any, pinned });
 			if (pinned) await editorTracker.closePinned();
 		}
 
 		await commands.executeCommand(BuiltInCommands.ViewFirstEditor);
-		editor = vscode.window.activeTextEditor;
+		editor = window.activeTextEditor;
 		if (editor === undefined) editor = await editorTracker.awaitNext();
 		if (editor === undefined ||
 			openEditors.some(_ => TextEditorComparer.equals(_.editor, editor, { useId: true, usePosition: true }))) { break; }
@@ -366,11 +365,11 @@ async function getListOfEditors(): Promise<Editor[]> {
 
 	for (const editor of openEditors) {
 		try {
-			await vscode.window.showTextDocument(editor.editor.document, {
+			await window.showTextDocument(editor.editor.document, {
 				preview: false,
 				viewColumn: editor.editor.viewColumn
 			});
-			if (editor.pinned) await vscode.commands.executeCommand('workbench.action.pinEditor');
+			if (editor.pinned) await commands.executeCommand('workbench.action.pinEditor');
 		} catch (error) {
 			console.error(error);
 		}
@@ -403,7 +402,7 @@ async function getListOfEditors(): Promise<Editor[]> {
 
 async function focusEditor(focussed: Editor) {
 	const editorTracker = new ActiveEditorTracker();
-	let active = vscode.window.activeTextEditor;
+	let active = window.activeTextEditor;
 	let editor = active;
 	const openEditors = [];
 	do {

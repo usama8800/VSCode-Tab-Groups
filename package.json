@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "1.4.4",
+	"version": "1.4.5",
 	"categories": [
 		"Other"
 	],
@@ -254,6 +254,12 @@
 						"scope": "window",
 						"description": "Save tab groups globally or locally in a workspace",
 						"default": true
+					},
+					"tab-groups.relativePaths": {
+						"type": "boolean",
+						"scope": "window",
+						"description": "Try to open the file relative to the workspace folders. With multiple workspace folders, order matters",
+						"default": false
 					},
 					"tab-groups.gitBranchGroups": {
 						"type": "string",

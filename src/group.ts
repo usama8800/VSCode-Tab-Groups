@@ -5,6 +5,8 @@ import _ = require('lodash');
 
 export interface Editor {
     document: vscode.TextDocument;
+    workspaceIndex?: number;
+    path?: string;
     viewColumn?: vscode.ViewColumn;
     focussed: boolean;
     pinned: boolean;

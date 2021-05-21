@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.4.5
+
+- Add option for relative file path for sharing `tab-groups.groups` setting
+
 ## 1.4.4
 
 - Fix no saved groups causing error

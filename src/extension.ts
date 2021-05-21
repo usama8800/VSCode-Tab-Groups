@@ -1,4 +1,5 @@
-import { commands, Disposable, ExtensionContext, extensions, TextEditor, window, workspace } from 'vscode';
+import * as path from 'path';
+import { commands, Disposable, ExtensionContext, extensions, TextEditor, Uri, window, workspace } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextDocumentComparer, TextEditorComparer } from './comparers';
 import { BuiltInCommands, GitBranchGroups } from './constants';
@@ -311,12 +312,26 @@ async function restoreGroup(groupName: string | undefined) {
 	if (groupName === undefined) { return; }
 	const group = groups.get(groupName);
 	if (!group) { return; }
+	const openRelative = workspace.getConfiguration().get<boolean>('tab-groups.relativePaths', false);
 	for (const editor of group) {
 		try {
-			await window.showTextDocument(editor.document, {
-				preview: false,
-				viewColumn: editor.viewColumn
-			});
+			let openRelativeSuccess = false;
+			if (openRelative && editor.workspaceIndex !== undefined && editor.path && workspace.workspaceFolders) {
+				const wsUri = workspace.workspaceFolders[editor.workspaceIndex].uri;
+				try {
+					await window.showTextDocument(Uri.parse(`${wsUri.scheme}://${wsUri.path}${path.sep}${editor.path}`), {
+						preview: false,
+						viewColumn: editor.viewColumn
+					});
+					openRelativeSuccess = true;
+				} catch (error) { }
+			}
+			if (!openRelativeSuccess) {
+				await window.showTextDocument(editor.document, {
+					preview: false,
+					viewColumn: editor.viewColumn
+				});
+			}
 			if (editor.pinned) await commands.executeCommand('workbench.action.pinEditor');
 		} catch (error) {
 			console.error(error);
@@ -378,8 +393,11 @@ async function getListOfEditors(): Promise<Editor[]> {
 	let ret: Editor[] = [];
 	for (const element of openEditors) {
 		if (element) {
+			let uri = element.editor.document.uri;
 			ret.push({
 				document: element.editor.document,
+				workspaceIndex: workspace.getWorkspaceFolder(uri)?.index,
+				path: workspace.asRelativePath(uri, false),
 				viewColumn: element.editor.viewColumn,
 				focussed: TextEditorComparer.equals(element.editor, focussedEditor),
 				pinned: element.pinned,

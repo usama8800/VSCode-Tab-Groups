@@ -2,7 +2,7 @@ import * as path from 'path';
 import { commands, Disposable, ExtensionContext, extensions, TextEditor, Uri, window, workspace } from 'vscode';
 import { ActiveEditorTracker } from './activeEditorTracker';
 import { TextEditorComparer } from './comparers';
-import { BuiltInCommands, Configurations, GitBranchGroups } from './constants';
+import { BuiltInCommands, Commands, Configurations, GitBranchGroups } from './constants';
 import { Editor, Groups, GroupTreeItem, SplitTreeItem, TreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
@@ -11,7 +11,6 @@ let latestGroup: string;
 let latestBranch: string | undefined;
 
 export function activate(context: ExtensionContext) {
-
 	const gitExtension = extensions.getExtension<GitExtension>('git')?.exports;
 	const git = gitExtension?.getAPI(1);
 	let gitBranchGroups = workspace.getConfiguration().get<GitBranchGroups>
@@ -43,13 +42,13 @@ export function activate(context: ExtensionContext) {
 	window.registerTreeDataProvider('tab-groups-groups', groups);
 
 	const disposables = [
-		commands.registerCommand('extension.saveGroup', saveGroup),
-		commands.registerCommand('extension.clearAndSaveGroup', async () => {
+		commands.registerCommand(Commands.Save, () => saveGroup()),
+		commands.registerCommand(Commands.ClearAndSave, async () => {
 			const success = await saveGroup();
 			if (!success) { return; }
 			await closeAllEditors();
 		}),
-		commands.registerCommand('extension.updateGroup', async () => {
+		commands.registerCommand(Commands.Update, async () => {
 			const name = await window.showQuickPick(groups.listOfNames(), {
 				canPickMany: false,
 				placeHolder: 'Which tab group would you like to update?',
@@ -58,28 +57,25 @@ export function activate(context: ExtensionContext) {
 			latestGroup = name;
 			updateGroup(name);
 		}),
-		commands.registerCommand('extension.updateLastGroup', async () => {
+		commands.registerCommand(Commands.UpdateLast, async () => {
 			if (!latestGroup) {
 				window.showWarningMessage('No last group');
 				return;
 			}
 			updateGroup(latestGroup);
 		}),
-		commands.registerCommand('extension.saveGroupFromView', async (item: TreeItem) => {
-			if (item === undefined) {
-				return saveGroup();
-			}
+		commands.registerCommand(Commands.SaveFromView, async (item: TreeItem) => {
+			// If click save for new group
+			if (item === undefined) return saveGroup();
 
-			if (item.getType() !== TreeItemType.GROUP) {
-				return;
-			}
+			if (item.getType() !== TreeItemType.GROUP) return;
 			const groupName = (item as GroupTreeItem).getName();
 
-			if (groupName === undefined) { return; }
+			if (groupName === undefined) return;
 			latestGroup = groupName;
 			await updateGroup(groupName);
 		}),
-		commands.registerCommand('extension.restoreGroup', async () => {
+		commands.registerCommand(Commands.Restore, async () => {
 			if (groups.length() === 0) {
 				window.showInformationMessage('No saved groups');
 				return;
@@ -89,7 +85,18 @@ export function activate(context: ExtensionContext) {
 			latestGroup = groupName;
 			await restoreGroup(groupName);
 		}),
-		commands.registerCommand('extension.restoreGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand(Commands.ClearAndRestore, async () => {
+			if (groups.length() === 0) {
+				window.showInformationMessage('No saved groups');
+				return;
+			}
+			const groupName = await window.showQuickPick(groups.listOfNames());
+			if (groupName === undefined) { return; }
+			latestGroup = groupName;
+			await closeAllEditors();
+			await restoreGroup(groupName);
+		}),
+		commands.registerCommand(Commands.RestoreFromView, async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -107,7 +114,7 @@ export function activate(context: ExtensionContext) {
 			latestGroup = groupName;
 			await restoreGroup(groupName);
 		}),
-		commands.registerCommand('extension.renameGroup', async (_item: TreeItem) => {
+		commands.registerCommand(Commands.Rename, async (_item: TreeItem) => {
 			const oldName = await window.showQuickPick(groups.listOfNames(), {
 				canPickMany: false,
 				placeHolder: 'Which tab group would you like to rename?',
@@ -123,7 +130,7 @@ export function activate(context: ExtensionContext) {
 
 			renameGroup(oldName, name);
 		}),
-		commands.registerCommand('extension.renameGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand(Commands.RenameFromView, async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -141,18 +148,7 @@ export function activate(context: ExtensionContext) {
 
 			renameGroup(groupName, name);
 		}),
-		commands.registerCommand('extension.clearAndRestoreGroup', async () => {
-			if (groups.length() === 0) {
-				window.showInformationMessage('No saved groups');
-				return;
-			}
-			const groupName = await window.showQuickPick(groups.listOfNames());
-			if (groupName === undefined) { return; }
-			latestGroup = groupName;
-			await closeAllEditors();
-			await restoreGroup(groupName);
-		}),
-		commands.registerCommand('extension.deleteGroup', async () => {
+		commands.registerCommand(Commands.Delete, async () => {
 			if (groups.length() === 0) {
 				window.showInformationMessage('No saved groups');
 				return;
@@ -162,10 +158,7 @@ export function activate(context: ExtensionContext) {
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
 		}),
-		commands.registerCommand('extension.closeAllEditors', () => {
-			commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
-		}),
-		commands.registerCommand('extension.deleteGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand(Commands.DeleteFromView, async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -174,7 +167,7 @@ export function activate(context: ExtensionContext) {
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
 		}),
-		commands.registerCommand('extension.deleteEditorGroupFromView', async (item: TreeItem) => {
+		commands.registerCommand(Commands.DeleteEditorGroupFromView, async (item: TreeItem) => {
 			if (item.getType() === TreeItemType.GROUP) {
 				return;
 			}
@@ -192,7 +185,7 @@ export function activate(context: ExtensionContext) {
 			if (isFile) { groups.removeFile(groupName, item); }
 			else { groups.removeViewColumn(groupName, (item as SplitTreeItem).getViewColumn()); }
 		}),
-		commands.registerCommand('extension.openFileFromView', async (item: TreeItem) => {
+		commands.registerCommand(Commands.OpenFileFromView, async (item: TreeItem) => {
 			if (item.getType() !== TreeItemType.FILE) {
 				return;
 			}
@@ -234,17 +227,20 @@ export function activate(context: ExtensionContext) {
 						viewColumn: editor.viewColumn
 					});
 				}
-				if (editor.pinned) await commands.executeCommand('workbench.action.pinEditor');
+				if (editor.pinned) await commands.executeCommand(BuiltInCommands.PinEditor);
 			} catch (error) {
 				console.error(error);
 			}
 		}),
-		commands.registerCommand('extension.undo', () => groups.undo()),
-		commands.registerCommand('extension.undoFromView', (_item: TreeItem) => groups.undo()),
-		commands.registerCommand('extension.trackGroup', () => groups.track(latestGroup)),
-		commands.registerCommand('extension.trackGroupFromView', () => groups.track(latestGroup)),
-		commands.registerCommand('extension.stopTrackingGroup', () => stopTrackingGroup()),
-		commands.registerCommand('extension.stopTrackingGroupFromView', () => stopTrackingGroup()),
+		commands.registerCommand(Commands.CloseAllEditors, () => {
+			commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
+		}),
+		commands.registerCommand(Commands.Undo, () => groups.undo()),
+		commands.registerCommand(Commands.UndoFromView, (_item: TreeItem) => groups.undo()),
+		commands.registerCommand(Commands.Track, () => groups.track(latestGroup)),
+		commands.registerCommand(Commands.TrackFromView, () => groups.track(latestGroup)),
+		commands.registerCommand(Commands.StopTracking, () => stopTrackingGroup()),
+		commands.registerCommand(Commands.StopTrackingFromView, () => stopTrackingGroup()),
 	];
 	context.subscriptions.concat(disposables);
 }

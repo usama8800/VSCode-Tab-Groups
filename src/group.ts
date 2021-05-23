@@ -1,6 +1,7 @@
 import { cloneDeep, set, unset } from 'lodash';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { Commands, Configurations } from './constants';
 import _ = require('lodash');
 
 export interface Editor {
@@ -105,7 +106,7 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
     private _tracking = '';
 
     constructor() {
-        const base64 = vscode.workspace.getConfiguration().get('tab-groups.groups', '');
+        const base64 = vscode.workspace.getConfiguration().get(Configurations.Groups, '');
         const decoded = Buffer.from(base64, 'base64').toString('ascii');
         this.groups = {};
         this.undoStack = [];
@@ -119,7 +120,7 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
                 this.groups = tempGroups;
             }
         } catch {
-            console.log('Was not about to parse decoded Base64 as JSon');
+            console.log('Was not able to parse decoded Base64 as Json');
         } // Base64 decoded was not valid
     }
 
@@ -135,13 +136,13 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         if (element.getType() === TreeItemType.FILE) {
             item.tooltip = element.getData();
             item.command = {
-                command: 'extension.openFileFromView',
+                command: Commands.OpenFileFromView,
                 title: 'Open file',
                 arguments: [element]
             };
         } else if (element.getType() === TreeItemType.GROUP) {
             item.command = {
-                command: 'extension.restoreGroupFromView',
+                command: Commands.RestoreFromView,
                 title: 'Restore group',
                 arguments: [element]
             };
@@ -272,9 +273,9 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
     }
 
     private saveToSettings() {
-        const global = vscode.workspace.getConfiguration().get('tab-groups.saveGlobally', false);
+        const global = vscode.workspace.getConfiguration().get(Configurations.SaveGlobally, false);
         const encoded = Buffer.from(JSON.stringify(this.groups)).toString('base64');
-        vscode.workspace.getConfiguration().update('tab-groups.groups', encoded, global);
+        vscode.workspace.getConfiguration().update(Configurations.Groups, encoded, global);
         this._onDidChangeTreeData.fire(undefined);
     }
 }

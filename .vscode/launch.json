@@ -6,6 +6,18 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Test Extension",
+			"type": "node",
+			"request": "launch",
+			"runtimeExecutable": "npm",
+			"args": [
+				"test"
+			],
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+		},
+		{
 			"name": "Run Extension",
 			"type": "extensionHost",
 			"request": "launch",

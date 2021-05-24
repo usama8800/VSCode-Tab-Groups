@@ -1,12 +1,27 @@
+declare interface KBMRobot {
+    startJar(jre_version?: 6 | 7): void;
+    stopJar(): void;
+    press(key: Key): KBMRobot;
+    release(key: Key): KBMRobot;
+    type(key: Key, delay?: number): KBMRobot;
+    typeString(str?: string, downDelay?: number, upDelay?: number): KBMRobot;
+    sleep(ms: number): KBMRobot;
+    mouseMove(x: number, y: number): KBMRobot;
+    mousePress(button: MouseButton): KBMRobot;
+    mouseRelease(button: MouseButton): KBMRobot;
+    mouseClick(button: MouseButton, delay?: number): KBMRobot;
+    mouseScroll(amount: number): KBMRobot;
+    go(): Promise<void>;
+}
 
+declare const kbmRobot: KBMRobot;
 
 declare module 'kbm-robot' {
-    export function startJar(): undefined;
-    export function stopJar(): undefined;
-    export function go(): Promise<undefined>;
-    export function type(key: Key): (typeof import('kbm-robot'));
-    export function typeString(str?: string): (typeof import('kbm-robot'));
+    export = kbmRobot;
 }
+
+type _MouseButton = '1' | '2' | '3';
+type MouseButton = _MouseButton | `${_MouseButton}${_MouseButton}` | `${_MouseButton}${_MouseButton}${_MouseButton}`;
 
 type Key = 'VK_ENTER'
     | 'VK_BACK_SPACE'

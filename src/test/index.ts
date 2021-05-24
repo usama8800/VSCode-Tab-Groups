@@ -2,6 +2,7 @@ import * as glob from 'glob';
 import * as Mocha from 'mocha';
 import * as path from 'path';
 import { workspace } from 'vscode';
+import { Configurations } from '../constants';
 
 export async function run(): Promise<void> {
     // Create the mocha test
@@ -14,7 +15,8 @@ export async function run(): Promise<void> {
     });
 
     const testsRoot = path.resolve(__dirname, '..');
-    await workspace.getConfiguration('').update('window.restoreFullscreen', true, true);
+    await workspace.getConfiguration('').update('window.restoreFullscreen', false, true);
+    await workspace.getConfiguration('').update(Configurations.SaveGlobally, false, true);
 
     return new Promise((c, e) => {
         glob('./test/suite/**/**.test.js', { cwd: testsRoot }, (err, files) => {

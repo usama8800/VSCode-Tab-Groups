@@ -1,5 +1,9 @@
 # Change Log
 
+## 1.4.8
+
+- Fix 2 pins in same editor group not saving
+
 ## 1.4.7
 
 - Fix splits not being saved

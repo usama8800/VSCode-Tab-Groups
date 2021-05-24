@@ -4,6 +4,22 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "readyTestWorkspace",
+			"type": "npm",
+			"group": "build",
+			"script": "readyTestWorkspace",
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": true
+			},
+			"dependsOn": "compile"
+		},
+		{
 			"label": "test",
 			"type": "npm",
 			"script": "test",

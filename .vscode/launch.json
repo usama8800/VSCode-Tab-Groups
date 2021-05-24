@@ -6,12 +6,29 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Extension Tests",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionTestsPath=${workspaceFolder}/out/test/index",
+				"--disable-extensions",
+				"${workspaceFolder}/.vscode-test/folder"
+			],
+			"smartStep": true,
+			"outFiles": [
+				"${workspaceFolder}/out/test/**/*.js"
+			],
+			"preLaunchTask": "readyTestWorkspace",
+		},
+		{
 			"name": "Test Extension",
 			"type": "node",
 			"request": "launch",
 			"runtimeExecutable": "npm",
 			"args": [
-				"test"
+				"test",
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"

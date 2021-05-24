@@ -10,7 +10,9 @@ async function readyWorkspace(workspaceFolderPath: string) {
     const git = simpleGit({ baseDir: workspaceFolderPath });
     await git.init();
 
-    Array.from({ length: 10 }, (_, i) => fs.writeFileSync(path.resolve(workspaceFolderPath, `${i + 1}.txt`), ''));
+    // 1-10 to open
+    // 11 to check for pins
+    Array.from({ length: 11 }, (_, i) => fs.writeFileSync(path.resolve(workspaceFolderPath, `${i + 1}.txt`), ''));
 }
 
 async function main() {
@@ -26,6 +28,7 @@ async function main() {
         const workspaceFolderPath = path.resolve(extensionDevelopmentPath, './.vscode-test/folder');
         await readyWorkspace(workspaceFolderPath);
 
+        if (process.argv[2] === 'readyOnly') return;
         // Download VS Code, unzip it and run the integration test
         await runTests({
             extensionDevelopmentPath, extensionTestsPath,

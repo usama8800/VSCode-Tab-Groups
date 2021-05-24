@@ -386,12 +386,9 @@ async function getListOfEditors(): Promise<Editor[]> {
 					editor.pinned = true;
 					await window.showTextDocument(editor.editor.document, editor.editor.viewColumn);
 					await commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
-				} else {
-					window.showErrorMessage('There was a problem saving the pins on editors');
-					break;
-				}
+				} else break; // Happens when 2 pins in same editor group
 			}
-			break;
+			continue;
 		}
 		for (const editor of visibleEditors) {
 			await window.showTextDocument(editor.document, editor.viewColumn);

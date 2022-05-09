@@ -6,7 +6,7 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Extension Tests",
+			"name": "Debug Extension (Same VSCode)",
 			"type": "extensionHost",
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
@@ -23,7 +23,7 @@
 			"preLaunchTask": "readyTestWorkspace",
 		},
 		{
-			"name": "Test Extension",
+			"name": "Test Extension (Test VSCode)",
 			"type": "node",
 			"request": "launch",
 			"runtimeExecutable": "npm",

@@ -299,10 +299,9 @@
 		"vscode.git"
 	],
 	"engines": {
-		"vscode": "^1.56.2"
+		"vscode": "1.67.0"
 	},
 	"devDependencies": {
-		"@jimp/png": "^0.16.1",
 		"@types/chai": "^4.2.18",
 		"@types/glob": "^7.1.3",
 		"@types/lodash": "^4.14.165",
@@ -321,5 +320,11 @@
 	},
 	"dependencies": {
 		"lodash": "^4.17.21"
+	},
+	"__metadata": {
+		"id": "b82ec2db-a68d-48b0-94f7-bde2fcb91c8e",
+		"publisherDisplayName": "Usama Ahsan",
+		"publisherId": "0d0d4019-166a-467f-a7aa-21567fb9d9a6",
+		"isPreReleaseVersion": false
 	}
 }

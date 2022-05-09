@@ -3,6 +3,12 @@ import * as path from 'path';
 import simpleGit from 'simple-git';
 import { runTests } from 'vscode-test';
 
+export function getWorkspaceFolder() {
+    // return path.resolve('Z:', 'Users/usama/Documents/VSCode-Tab-Groups/.vscode-test/folder');
+    // return path.resolve('\\\\usama8800-desk\\C$', 'Users/usama/Documents/VSCode-Tab-Groups/.vscode-test/folder');
+    return path.resolve(__dirname, '../../.vscode-test/folder');
+}
+
 async function readyWorkspace(workspaceFolderPath: string) {
     if (fs.existsSync(workspaceFolderPath)) fs.rmSync(workspaceFolderPath, { recursive: true, force: true });
     if (fs.mkdirSync(workspaceFolderPath, { recursive: true }) !== workspaceFolderPath) throw Error('Could not ready workspace');
@@ -25,7 +31,7 @@ async function main() {
         // Passed to --extensionTestsPath
         const extensionTestsPath = path.resolve(__dirname, './index');
 
-        const workspaceFolderPath = path.resolve(extensionDevelopmentPath, './.vscode-test/folder');
+        const workspaceFolderPath = getWorkspaceFolder();
         await readyWorkspace(workspaceFolderPath);
 
         if (process.argv[2] === 'readyOnly') return;
@@ -33,7 +39,7 @@ async function main() {
         await runTests({
             extensionDevelopmentPath, extensionTestsPath,
             launchArgs: [workspaceFolderPath, '--disable-extensions'],
-            vscodeExecutablePath: path.resolve(extensionDevelopmentPath, './.vscode-test/vscode-1.56.2/Code.exe')
+            // vscodeExecutablePath: path.resolve(extensionDevelopmentPath, './.vscode-test/vscode-1.56.2/Code.exe')
         });
     } catch (err) {
         console.error(err);
@@ -42,4 +48,4 @@ async function main() {
     }
 }
 
-main();
+if (require.main === module) main();

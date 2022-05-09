@@ -372,7 +372,9 @@ async function getListOfEditors(): Promise<Editor[]> {
 	await workspace.getConfiguration().update(Configurations.CloseEmptyGroups, false, false);
 	const focussed = window.activeTextEditor;
 	const openEditors: { editor: TextEditor, pinned: boolean }[] = [];
-	while (window.visibleTextEditors.length !== 0) {
+	let noAction = false;
+	while (window.visibleTextEditors.length !== 0 || noAction) {
+		noAction = true;
 		// Remove already saved editors
 		const visibleEditors = window.visibleTextEditors.filter(e =>
 			!openEditors.some(oe => TextEditorComparer.equals(e, oe.editor, { useId: false, usePosition: true })));
@@ -383,6 +385,7 @@ async function getListOfEditors(): Promise<Editor[]> {
 				const editor = openEditors.find(oe =>
 					TextEditorComparer.equals(oe.editor, window.visibleTextEditors[0], { useId: false, usePosition: true }));
 				if (editor) {
+					noAction = false;
 					editor.pinned = true;
 					await window.showTextDocument(editor.editor.document, editor.editor.viewColumn);
 					await commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
@@ -391,6 +394,7 @@ async function getListOfEditors(): Promise<Editor[]> {
 			continue;
 		}
 		for (const editor of visibleEditors) {
+			noAction = false;
 			await window.showTextDocument(editor.document, editor.viewColumn);
 
 			const closed = await commands.executeCommand(BuiltInCommands.CloseActiveEditor);
@@ -403,6 +407,7 @@ async function getListOfEditors(): Promise<Editor[]> {
 			openEditors.push({ editor, pinned });
 		}
 	}
+	if (noAction) window.showWarningMessage('There was a problem saving all tabs');
 	for (const editor of openEditors) {
 		await window.showTextDocument(editor.editor.document, { preview: false, viewColumn: editor.editor.viewColumn });
 		if (editor.pinned) await commands.executeCommand(BuiltInCommands.PinEditor);

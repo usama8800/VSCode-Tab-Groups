@@ -15,7 +15,10 @@ export async function run(): Promise<void> {
     });
 
     const testsRoot = path.resolve(__dirname, '..');
-    await workspace.getConfiguration('').update('window.restoreFullscreen', false, true);
+    await workspace.getConfiguration('').update('window.restoreFullscreen', true, true);
+    await workspace.getConfiguration('').update('window.newWindowDimensions', 'maximized', true);
+    await workspace.getConfiguration('').update('workbench.editor.decorations.badges', false, true);
+    // await workspace.getConfiguration('').update('workbench.editor.openPositioning', 'last', true);
     await workspace.getConfiguration('').update(Configurations.SaveGlobally, false, true);
 
     return new Promise((c, e) => {

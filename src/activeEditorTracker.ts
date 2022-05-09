@@ -54,11 +54,11 @@ export class ActiveEditorTracker extends Disposable {
         const editor = await new Promise<TextEditor | undefined>(resolve => {
             let timer: any;
 
-            this._resolver = (editor: TextEditor) => {
+            this._resolver = (eeditor: TextEditor) => {
                 if (timer) {
                     clearTimeout(timer as any);
                     timer = 0;
-                    resolve(editor);
+                    resolve(eeditor);
                 }
             };
 

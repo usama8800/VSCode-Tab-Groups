@@ -12,7 +12,7 @@
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test/index",
+				// "--extensionTestsPath=${workspaceFolder}/out/test/index",
 				"--disable-extensions",
 				"${workspaceFolder}/.vscode-test/folder"
 			],
@@ -20,7 +20,7 @@
 			"outFiles": [
 				"${workspaceFolder}/out/test/**/*.js"
 			],
-			"preLaunchTask": "readyTestWorkspace",
+			"preLaunchTask": "compile"
 		},
 		{
 			"name": "Test Extension (Test VSCode)",
@@ -35,18 +35,21 @@
 			],
 		},
 		{
-			"name": "Run Extension",
+			"name": "Debug Tests",
 			"type": "extensionHost",
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--disable-extensions"
+				"--extensionTestsPath=${workspaceFolder}/out/test/index",
+				"--disable-extensions",
+				"${workspaceFolder}/.vscode-test/folder"
 			],
+			"smartStep": true,
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/out/test/**/*.js"
 			],
-			"preLaunchTask": "compile"
-		}
+			"preLaunchTask": "readyTestWorkspace"
+		},
 	]
 }

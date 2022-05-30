@@ -1,5 +1,16 @@
 # Change Log
 
+## 2.0.0
+
+- Use the new `window.tabGroups` api
+- Fix saved tabs getting lost on error
+- Fix not restoring in original order
+- Fix saved same name files getting lost
+
+## 1.4.9
+
+- Try to fix
+
 ## 1.4.8
 
 - Fix 2 pins in same editor group not saving

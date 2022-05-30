@@ -4,8 +4,6 @@ import simpleGit from 'simple-git';
 import { runTests } from 'vscode-test';
 
 export function getWorkspaceFolder() {
-    // return path.resolve('Z:', 'Users/usama/Documents/VSCode-Tab-Groups/.vscode-test/folder');
-    // return path.resolve('\\\\usama8800-desk\\C$', 'Users/usama/Documents/VSCode-Tab-Groups/.vscode-test/folder');
     return path.resolve(__dirname, '../../.vscode-test/folder');
 }
 
@@ -16,31 +14,45 @@ async function readyWorkspace(workspaceFolderPath: string) {
     const git = simpleGit({ baseDir: workspaceFolderPath });
     await git.init();
 
-    // 1-10 to open
-    // 11 to check for pins
-    Array.from({ length: 11 }, (_, i) => fs.writeFileSync(path.resolve(workspaceFolderPath, `${i + 1}.txt`), ''));
+    Array.from({ length: 10 }, (_, i) => fs.writeFileSync(path.resolve(workspaceFolderPath, `${i + 1}.txt`), ''));
 }
 
 async function main() {
+    // The folder containing the Extension Manifest package.json
+    // Passed to `--extensionDevelopmentPath`
+    const extensionDevelopmentPath = path.resolve(__dirname, '../../');
+
+    // The path to the extension test runner script
+    // Passed to --extensionTestsPath
+    const extensionTestsPath = path.resolve(__dirname, './index');
+
+    const workspaceFolderPath = getWorkspaceFolder();
     try {
-        // The folder containing the Extension Manifest package.json
-        // Passed to `--extensionDevelopmentPath`
-        const extensionDevelopmentPath = path.resolve(__dirname, '../../');
-
-        // The path to the extension test runner script
-        // Passed to --extensionTestsPath
-        const extensionTestsPath = path.resolve(__dirname, './index');
-
-        const workspaceFolderPath = getWorkspaceFolder();
         await readyWorkspace(workspaceFolderPath);
+    } catch (err) {
+        console.error(err);
+        process.exit(1);
+    }
 
-        if (process.argv[2] === 'readyOnly') return;
-        // Download VS Code, unzip it and run the integration test
-        await runTests({
+    if (process.argv[2] === 'readyOnly') return;
+    // Download VS Code, unzip it and run the integration test
+    try {
+        const ret = await runTests({
             extensionDevelopmentPath, extensionTestsPath,
             launchArgs: [workspaceFolderPath, '--disable-extensions'],
-            // vscodeExecutablePath: path.resolve(extensionDevelopmentPath, './.vscode-test/vscode-1.56.2/Code.exe')
+            // vscodeExecutablePath: path.resolve(extensionDevelopmentPath, './.vscode-test/vscode-1.67.0/Code.exe')
+            version: '1.67.0',
         });
+        console.log(ret);
+        if (ret === 0) {
+            fs.writeFileSync(path.resolve(workspaceFolderPath, '12.txt'), '');
+            await runTests({
+                extensionDevelopmentPath, extensionTestsPath,
+                launchArgs: [workspaceFolderPath, '--disable-extensions'],
+                // vscodeExecutablePath: path.resolve(extensionDevelopmentPath, './.vscode-test/vscode-1.67.0/Code.exe')
+                version: '1.67.0',
+            });
+        }
     } catch (err) {
         console.error(err);
         console.error('Failed to run tests');

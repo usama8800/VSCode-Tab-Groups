@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "1.4.8",
+	"version": "2.0.0",
 	"categories": [
 		"Other"
 	],
@@ -244,11 +244,6 @@
 			{
 				"title": "Tab Groups",
 				"properties": {
-					"tab-groups.groups": {
-						"type": "string",
-						"scope": "window",
-						"description": "Used to save tab groups across sessions. Don't modify manually"
-					},
 					"tab-groups.saveGlobally": {
 						"type": "boolean",
 						"scope": "window",
@@ -289,7 +284,7 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
-		"precompile": "bash -c \"rm -rf ./out\"",
+		"preecompile": "bash -c \"rm -rf ./out\"",
 		"compile": "tsc -p ./",
 		"watch": "tsc -watch -p ./",
 		"test": "npm run compile && node --inspect ./out/test/runTest.js",
@@ -299,7 +294,7 @@
 		"vscode.git"
 	],
 	"engines": {
-		"vscode": "1.67.0"
+		"vscode": "^1.67.0"
 	},
 	"devDependencies": {
 		"@types/chai": "^4.2.18",

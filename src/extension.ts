@@ -1,21 +1,20 @@
 import * as path from 'path';
-import { commands, Disposable, ExtensionContext, extensions, TextEditor, Uri, window, workspace } from 'vscode';
-import { ActiveEditorTracker } from './activeEditorTracker';
-import { TextEditorComparer } from './comparers';
+import { commands, Disposable, ExtensionContext, extensions, Tab, TabInputText, Uri, window, workspace } from 'vscode';
 import { BuiltInCommands, Commands, Configurations, GitBranchGroups } from './constants';
-import { Editor, Groups, GroupTreeItem, SplitTreeItem, TreeItem, TreeItemType } from './group';
+import { CustomTreeItem, Groups, GroupTreeItem, SplitTreeItem, TreeItemType } from './group';
 import { API, GitExtension } from './typings/git';
 
-const groups = new Groups();
+let groups: Groups;
 let latestGroup: string;
 let latestBranch: string | undefined;
 
 export function activate(context: ExtensionContext) {
-	const gitExtension = extensions.getExtension<GitExtension>('git')?.exports;
+	const gitExtension = extensions.getExtension<GitExtension>('vscode.git')?.exports;
 	const git = gitExtension?.getAPI(1);
 	let gitBranchGroups = workspace.getConfiguration().get<GitBranchGroups>
 		(Configurations.GitBranchGroups, GitBranchGroups.SaveAndRestore);
 	let repoOnDidChangeDisposable: Disposable | undefined;
+	groups = new Groups(context);
 
 	if (git?.state === 'initialized' && gitBranchGroups !== GitBranchGroups.Nothing) {
 		repoOnDidChangeDisposable = initGitBranchGroups(git, gitBranchGroups);
@@ -46,7 +45,7 @@ export function activate(context: ExtensionContext) {
 		commands.registerCommand(Commands.ClearAndSave, async () => {
 			const success = await saveGroup();
 			if (!success) { return; }
-			await closeAllEditors();
+			await commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 		}),
 		commands.registerCommand(Commands.Update, async () => {
 			const name = await window.showQuickPick(groups.listOfNames(), {
@@ -64,7 +63,7 @@ export function activate(context: ExtensionContext) {
 			}
 			updateGroup(latestGroup);
 		}),
-		commands.registerCommand(Commands.SaveFromView, async (item: TreeItem) => {
+		commands.registerCommand(Commands.SaveFromView, async (item: CustomTreeItem) => {
 			// If click save for new group
 			if (item === undefined) return saveGroup();
 
@@ -93,10 +92,10 @@ export function activate(context: ExtensionContext) {
 			const groupName = await window.showQuickPick(groups.listOfNames());
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
-			await closeAllEditors();
+			await commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 			await restoreGroup(groupName);
 		}),
-		commands.registerCommand(Commands.RestoreFromView, async (item: TreeItem) => {
+		commands.registerCommand(Commands.RestoreFromView, async (item: CustomTreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -107,14 +106,14 @@ export function activate(context: ExtensionContext) {
 				await updateGroup(latestGroup);
 			}
 			if (action.endsWith('Close others')) {
-				await closeAllEditors();
+				await commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 			}
 
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
 			await restoreGroup(groupName);
 		}),
-		commands.registerCommand(Commands.Rename, async (_item: TreeItem) => {
+		commands.registerCommand(Commands.Rename, async (_item: CustomTreeItem) => {
 			const oldName = await window.showQuickPick(groups.listOfNames(), {
 				canPickMany: false,
 				placeHolder: 'Which tab group would you like to rename?',
@@ -130,7 +129,7 @@ export function activate(context: ExtensionContext) {
 
 			renameGroup(oldName, name);
 		}),
-		commands.registerCommand(Commands.RenameFromView, async (item: TreeItem) => {
+		commands.registerCommand(Commands.RenameFromView, async (item: CustomTreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -158,7 +157,7 @@ export function activate(context: ExtensionContext) {
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
 		}),
-		commands.registerCommand(Commands.DeleteFromView, async (item: TreeItem) => {
+		commands.registerCommand(Commands.DeleteFromView, async (item: CustomTreeItem) => {
 			if (item.getType() !== TreeItemType.GROUP) {
 				return;
 			}
@@ -167,7 +166,7 @@ export function activate(context: ExtensionContext) {
 			if (latestGroup === groupName) { latestGroup = ''; }
 			groups.remove(groupName);
 		}),
-		commands.registerCommand(Commands.DeleteEditorGroupFromView, async (item: TreeItem) => {
+		commands.registerCommand(Commands.DeleteEditorGroupFromView, async (item: CustomTreeItem) => {
 			if (item.getType() === TreeItemType.GROUP) {
 				return;
 			}
@@ -182,61 +181,21 @@ export function activate(context: ExtensionContext) {
 			if (groupName === undefined) { return; }
 			latestGroup = groupName;
 
-			if (isFile) { groups.removeFile(groupName, item); }
+			if (isFile) { groups.removeFile(item); }
 			else { groups.removeViewColumn(groupName, (item as SplitTreeItem).getViewColumn()); }
 		}),
-		commands.registerCommand(Commands.OpenFileFromView, async (item: TreeItem) => {
+		commands.registerCommand(Commands.OpenFileFromView, async (item: CustomTreeItem) => {
 			if (item.getType() !== TreeItemType.FILE) {
 				return;
 			}
-			let group: Editor[] | undefined;
 
-			let parent = item.getParent();
-			if (parent?.getType() === TreeItemType.GROUP) {
-				group = groups.get(parent.getData());
-			} else {
-				parent = parent?.getParent();
-				if (parent?.getType() === TreeItemType.GROUP) {
-					group = groups.get(parent.getData().name);
-				}
-			}
-
-			if (!group) { return; }
-
-			const editor = group.find(e => e.document.fileName === item.getData());
-			if (!editor) { return; }
-
-			try {
-				const openRelative = workspace.getConfiguration().get<boolean>(Configurations.RelativePaths, false);
-				let openRelativeSuccess = false;
-				if (openRelative && editor.workspaceIndex !== undefined && editor.path && workspace.workspaceFolders) {
-					const wsUri = workspace.workspaceFolders[editor.workspaceIndex].uri;
-					try {
-						await window.showTextDocument(Uri.parse(`${wsUri.scheme}://${wsUri.path}${path.sep}${editor.path}`), {
-							preview: false,
-							viewColumn: editor.viewColumn
-						});
-						openRelativeSuccess = true;
-					} catch (error) {
-						console.log(error);
-					}
-				}
-				if (!openRelativeSuccess) {
-					await window.showTextDocument(editor.document, {
-						preview: false,
-						viewColumn: editor.viewColumn
-					});
-				}
-				if (editor.pinned) await commands.executeCommand(BuiltInCommands.PinEditor);
-			} catch (error) {
-				console.error(error);
-			}
+			await openTab(item.getData() as Tab);
 		}),
 		commands.registerCommand(Commands.CloseAllEditors, () => {
 			commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 		}),
 		commands.registerCommand(Commands.Undo, () => groups.undo()),
-		commands.registerCommand(Commands.UndoFromView, (_item: TreeItem) => groups.undo()),
+		commands.registerCommand(Commands.UndoFromView, (_item: CustomTreeItem) => groups.undo()),
 		commands.registerCommand(Commands.Track, () => groups.track(latestGroup)),
 		commands.registerCommand(Commands.TrackFromView, () => groups.track(latestGroup)),
 		commands.registerCommand(Commands.StopTracking, () => stopTrackingGroup()),
@@ -255,18 +214,13 @@ function initGitBranchGroups(git: API, option: GitBranchGroups) {
 	const repo = git.repositories[0];
 	latestBranch = repo.state.HEAD?.name;
 
-	if (option as any === true || option as any === false) {
-		window.showErrorMessage('tab-groups.gitBranchGroups needs to be updated');
-		return repo.state.onDidChange(() => { });
-	}
-
 	return repo.state.onDidChange(async () => {
 		if (repo.state.HEAD?.name !== latestBranch) {
 			if (latestBranch) {
 				await updateGroup(Groups.branchGroupName(latestBranch), true);
 			}
 			if (option === GitBranchGroups.SaveAndRestore) {
-				await closeAllEditors();
+				await commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 				if (repo.state.HEAD?.name) {
 					await restoreGroup(Groups.branchGroupName(repo.state.HEAD?.name));
 				}
@@ -284,8 +238,7 @@ async function stopTrackingGroup() {
 async function updateGroup(group: string, save = false) {
 	if (group === undefined) { return; }
 	if (groups.remove(group, true) || save) {
-		const openEditors = await getListOfEditors();
-		groups.add(group, openEditors.filter(e => e));
+		groups.add(group, window.tabGroups);
 	}
 }
 
@@ -319,118 +272,84 @@ async function saveGroup(): Promise<boolean> {
 	}
 
 	latestGroup = name;
-	const openEditors = await getListOfEditors();
-	groups.add(name, openEditors.filter(e => e));
+	groups.add(name, window.tabGroups);
 	return true;
 }
 
 async function restoreGroup(groupName: string | undefined) {
 	await stopTrackingGroup();
+
 	if (groupName === undefined) { return; }
-	const group = groups.get(groupName);
-	if (!group) { return; }
+	const tabGroups = groups.get(groupName);
+	if (!tabGroups) { return; }
+
+	for (let i = 0; i < tabGroups.all.length; i++) {
+		for (const tab of tabGroups.all[i].tabs) {
+			await openTab(tab);
+		}
+	}
+
+	for (const tabGroup of tabGroups.all) {
+		await openTab(tabGroup.activeTab);
+	}
+	await openTab(tabGroups.activeTabGroup.activeTab);
+}
+
+async function openTab(tab?: Tab) {
+	if (!tab) return;
+	const input = tab.input as any;
+	const uri: Uri = input.uri;
+	const original: Uri = input.original;
+	const modified: Uri = input.modified;
+	const viewType = input.viewType;
+	const notebookType = input.notebookType;
+
+	// Normal
+	if (uri && !viewType) return openNormalTab(tab);
+
+	// Custom
+	if (uri && viewType) return viewType + ': ' + path.basename(uri.path);
+
+	// Webview
+	if (!uri && viewType) return 'Webview: ' + viewType;
+
+	// Diff
+	if (!notebookType && modified && original) return path.basename(original.path) + ' diff ' + path.basename(modified.path);
+
+	// Notebook Diff
+	if (notebookType && modified && original)
+		return notebookType + ': ' + path.basename(original.path) + ' diff ' + path.basename(modified.path);
+
+	// Notebook
+	if (notebookType) return notebookType + ': ' + path.basename(uri.path);
+
+	// Terminal
+	if (!uri && !original && !modified && !viewType && !notebookType) return 'Terminal: ' + tab.label;
+}
+
+async function openNormalTab(tab: Tab) {
+	const openRelativeSuccess = false;
 	const openRelative = workspace.getConfiguration().get<boolean>(Configurations.RelativePaths, false);
-	for (const editor of group) {
-		try {
-			let openRelativeSuccess = false;
-			if (openRelative && editor.workspaceIndex !== undefined && editor.path && workspace.workspaceFolders) {
-				const wsUri = workspace.workspaceFolders[editor.workspaceIndex].uri;
-				try {
-					await window.showTextDocument(Uri.parse(`${wsUri.scheme}://${wsUri.path}${path.sep}${editor.path}`), {
-						preview: false,
-						viewColumn: editor.viewColumn
-					});
-					openRelativeSuccess = true;
-				} catch (error) {
-					console.log(error);
-				}
-			}
-			if (!openRelativeSuccess) {
-				await window.showTextDocument(editor.document, {
+	const uri = Uri.file((tab.input as TabInputText).uri.path);
+	if (openRelative && workspace.workspaceFolders) {
+		for (let i = 0; i < workspace.workspaceFolders.length; i++) {
+			const wsUri = workspace.workspaceFolders[i].uri;
+			try {
+				await window.showTextDocument(Uri.parse(`${wsUri.scheme}://${wsUri.path}${path.sep}${uri.path}`), {
 					preview: false,
-					viewColumn: editor.viewColumn
+					viewColumn: tab.group.viewColumn,
 				});
+				break;
+			} catch (error) {
+				continue;
 			}
-			if (editor.pinned) await commands.executeCommand(BuiltInCommands.PinEditor);
-		} catch (error) {
-			console.error(error);
 		}
 	}
-
-	const focussed = group.find(editor => editor.focussed);
-	if (focussed) await window.showTextDocument(focussed.document, focussed.viewColumn);
-}
-
-async function closeAllEditors(): Promise<void> {
-	await stopTrackingGroup();
-	const editorTracker = new ActiveEditorTracker();
-	await editorTracker.awaitCloseAll();
-	editorTracker.dispose();
-}
-
-async function getListOfEditors(): Promise<Editor[]> {
-	await workspace.getConfiguration().update(Configurations.CloseEmptyGroups, false, false);
-	const focussed = window.activeTextEditor;
-	const openEditors: { editor: TextEditor, pinned: boolean }[] = [];
-	let noAction = false;
-	while (window.visibleTextEditors.length !== 0 || noAction) {
-		noAction = true;
-		// Remove already saved editors
-		const visibleEditors = window.visibleTextEditors.filter(e =>
-			!openEditors.some(oe => TextEditorComparer.equals(e, oe.editor, { useId: false, usePosition: true })));
-		// If all saved, only pinned remain with pinned = false
-		if (visibleEditors.length === 0) {
-			while (window.visibleTextEditors.length !== 0) {
-				// Find pinned editor not closed in the for loop below
-				const editor = openEditors.find(oe =>
-					TextEditorComparer.equals(oe.editor, window.visibleTextEditors[0], { useId: false, usePosition: true }));
-				if (editor) {
-					noAction = false;
-					editor.pinned = true;
-					await window.showTextDocument(editor.editor.document, editor.editor.viewColumn);
-					await commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
-				} else break; // Happens when 2 pins in same editor group
-			}
-			continue;
-		}
-		for (const editor of visibleEditors) {
-			noAction = false;
-			await window.showTextDocument(editor.document, editor.viewColumn);
-
-			const closed = await commands.executeCommand(BuiltInCommands.CloseActiveEditor);
-			// Not perfect. Doesn't return true if only pinned editor in group
-			const pinned = closed === null;
-			if (pinned) {
-				await window.showTextDocument(editor.document, editor.viewColumn);
-				await commands.executeCommand(BuiltInCommands.CloseActivePinnedEditor);
-			}
-			openEditors.push({ editor, pinned });
-		}
+	if (!openRelativeSuccess) {
+		await window.showTextDocument(uri, {
+			preview: false,
+			viewColumn: tab.group.viewColumn,
+		});
+		if (tab.isPinned) await commands.executeCommand(BuiltInCommands.PinEditor);
 	}
-	if (noAction) window.showWarningMessage('There was a problem saving all tabs');
-	for (const editor of openEditors) {
-		await window.showTextDocument(editor.editor.document, { preview: false, viewColumn: editor.editor.viewColumn });
-		if (editor.pinned) await commands.executeCommand(BuiltInCommands.PinEditor);
-	}
-	if (focussed) await window.showTextDocument(focussed.document, focussed.viewColumn);
-	await workspace.getConfiguration().update(Configurations.CloseEmptyGroups, undefined, false);
-
-	let ret: Editor[] = [];
-	for (const element of openEditors) {
-		if (element) {
-			const uri = element.editor.document.uri;
-			ret.push({
-				document: element.editor.document,
-				workspaceIndex: workspace.getWorkspaceFolder(uri)?.index,
-				path: workspace.asRelativePath(uri, false),
-				viewColumn: element.editor.viewColumn,
-				focussed: TextEditorComparer.equals(element.editor, window.activeTextEditor, { useId: false, usePosition: true }),
-				pinned: element.pinned,
-			});
-		}
-	}
-
-	// Sort by viewcolumn
-	ret = ret.sort((a, b) => parseInt(a.viewColumn?.toString() ?? '0') - parseInt(b.viewColumn?.toString() ?? '0'));
-	return ret;
 }

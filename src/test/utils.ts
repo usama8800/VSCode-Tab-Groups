@@ -1,11 +1,9 @@
 import { TabGroups } from 'vscode';
 import _ = require('lodash');
 
-export type Editor = { file: string, viewColumn: number };
-
-let groupCounter = 1;
+let groupCounter = 2;
 export function newGroupName() {
-    return `Group${groupCounter++}\n`;
+    return `Group ${groupCounter++}\n`;
 }
 
 export function delay(ms: number) {
@@ -36,40 +34,5 @@ export function checkTabGroups(tabGroups1: TabGroups, tabGroups2: TabGroups) {
             if (tab1.label !== tab2.label)
                 return `Label is not the same in tab group ${i}`;
         }
-    }
-}
-
-export function reprEditors(editors: Editor): string;
-export function reprEditors(editors: Editor[]): string[];
-export function reprEditors(es: any): any {
-    const editors = es as Editor | Editor[];
-    console.log(editorToViewColumns(editors as any));
-    const f = (e: Editor) => `${e.file}(${e.viewColumn})`;
-    if (editors instanceof Array) {
-        return editors.sort((a, b) => (a.viewColumn ?? 0) - (b.viewColumn ?? 0)).map(f);
-    } else {
-        return f(editors);
-    }
-}
-
-export function editorToFilenames(editors: Editor): string;
-export function editorToFilenames(editors: Editor[]): string[];
-export function editorToFilenames(es: any): any {
-    const editors = es as Editor | Editor[];
-    if (editors instanceof Array) {
-        return editors.map(e => e.file).sort();
-    } else {
-        return editors.file;
-    }
-}
-
-export function editorToViewColumns(editors: Editor): number;
-export function editorToViewColumns(editors: Editor[]): number[];
-export function editorToViewColumns(es: any): any {
-    const editors = es as Editor | Editor[];
-    if (editors instanceof Array) {
-        return editors.map(e => e.viewColumn).sort();
-    } else {
-        return editors.viewColumn;
     }
 }

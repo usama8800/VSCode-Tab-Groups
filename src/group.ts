@@ -1,44 +1,45 @@
 import { cloneDeep, set, unset } from 'lodash';
-import * as path from 'path';
-import * as vscode from 'vscode';
-import { Commands, Configurations } from './constants';
+import {
+    EventEmitter, ExtensionContext, Memento, ProviderResult, Tab, TabGroup, TabGroups, TreeDataProvider,
+    TreeItem, TreeItemCollapsibleState, ViewColumn, window, workspace
+} from 'vscode';
+import { Commands, Configurations, deserializeTabGroups, serializeTabGroups, tabToFilename } from './constants';
 import _ = require('lodash');
 
-export interface Editor {
-    document: vscode.TextDocument;
-    workspaceIndex?: number;
-    path?: string;
-    viewColumn?: vscode.ViewColumn;
-    focussed: boolean;
-    pinned: boolean;
-}
+type TreeItemData = TabGroups | TabGroup | Tab;
 
 export enum TreeItemType {
     GROUP = 'group', SPLIT = 'split', FILE = 'file'
 }
 
-export class TreeItem {
+export class CustomTreeItem {
     protected type: TreeItemType;
-    protected data: any;
-    private parent?: TreeItem;
+    protected data: TreeItemData;
+    protected name: string;
+    protected tracking?: boolean;
+    private parent?: CustomTreeItem;
 
-    constructor(type: TreeItemType, data: any, parent?: TreeItem) {
+    constructor(type: TreeItemType, data: TreeItemData, extra?: {
+        name?: string, parent?: CustomTreeItem, tracking?: boolean
+    }) {
         this.type = type;
         this.data = data;
-        this.parent = parent;
+        this.parent = extra?.parent;
+        this.name = extra?.name ?? '';
+        this.tracking = extra?.tracking;
     }
 
     getCollapsibleState() {
         return this.type === TreeItemType.GROUP ?
-            vscode.TreeItemCollapsibleState.Collapsed :
+            TreeItemCollapsibleState.Collapsed :
             this.type === TreeItemType.SPLIT ?
-                vscode.TreeItemCollapsibleState.Expanded :
-                vscode.TreeItemCollapsibleState.None;
+                TreeItemCollapsibleState.Expanded :
+                TreeItemCollapsibleState.None;
     }
 
     getText() {
-        if (this.type === TreeItemType.FILE) { return path.basename(this.data); }
-        return this.data;
+        if (this.type === TreeItemType.FILE) { return tabToFilename(this.data as Tab); }
+        return this.name;
     }
 
     getData() {
@@ -54,87 +55,97 @@ export class TreeItem {
     }
 
     toString() {
-        return `${this.type}: ${this.data}`;
+        return `${this.type}: ${this.name}`;
     }
 }
 
-export class GroupTreeItem extends TreeItem {
-    constructor(name: string, tracking: boolean) {
-        super(TreeItemType.GROUP, {
-            name, tracking
-        });
+export class GroupTreeItem extends CustomTreeItem {
+    constructor(data: TreeItemData, name: string, tracking: boolean) {
+        super(TreeItemType.GROUP, data, { name, tracking });
     }
 
     getText() {
-        return this.data.tracking ? `${this.data.name} 📌` : this.data.name;
+        return this.tracking ? `${this.name} 📌` : this.name;
     }
 
     getName() {
-        return this.data.name;
+        return this.name;
     }
 }
 
-export class SplitTreeItem extends TreeItem {
+export class SplitTreeItem extends CustomTreeItem {
 
-    constructor(groupName: string, parent: TreeItem, viewColumn?: vscode.ViewColumn) {
-        super(TreeItemType.SPLIT, {
-            groupName,
-            viewColumn,
-        }, parent);
+    constructor(data: TreeItemData, name: string, parent: CustomTreeItem) {
+        super(TreeItemType.SPLIT, data, { parent, name });
     }
 
     getText() {
-        return `Split ${this.data.viewColumn}`;
+        return `Split ${this.getViewColumn()}`;
     }
 
     getGroupName(): string {
-        return this.data.groupName;
+        return this.name;
     }
 
-    getViewColumn(): vscode.ViewColumn {
-        return this.data.viewColumn;
+    getViewColumn(): ViewColumn {
+        return (this.data as TabGroup).viewColumn;
     }
 
     toString() {
-        return `${this.type}: ${this.data.viewColumn}`;
+        return `${this.type}: ${this.getViewColumn()}`;
     }
 }
 
-export class Groups implements vscode.TreeDataProvider<TreeItem>{
-    groups: { [key: string]: Editor[] };
-    undoStack: { [key: string]: Editor[] }[];
+export class Groups implements TreeDataProvider<CustomTreeItem>{
+    groups: { [key: string]: TabGroups };
+    undoStack: { [key: string]: TabGroups }[];
     private _tracking = '';
+    private globalState: Memento;
+    private workspaceState: Memento;
 
-    constructor() {
-        const base64 = vscode.workspace.getConfiguration().get(Configurations.Groups, '');
-        const decoded = Buffer.from(base64, 'base64').toString('ascii');
+    constructor(context: ExtensionContext) {
+        this.globalState = context.globalState;
+        this.workspaceState = context.workspaceState;
+        const global = workspace.getConfiguration().get(Configurations.SaveGlobally, false);
+        let base64 = '';
+        if (global) {
+            base64 = this.globalState.get('tab-groups') ?? base64;
+        } else {
+            base64 = this.workspaceState.get('tab-groups') ?? base64;
+        }
+
+        const decoded = Buffer.from(base64, 'base64').toString('utf-8');
         this.groups = {};
         this.undoStack = [];
+        if (decoded === '') {
+            console.log('No saved groups');
+            return;
+        }
+
         try { // Try to use the decoded base64
-            this.groups = JSON.parse(decoded);
-            if (this.groups instanceof Array) {
-                const tempGroups: any = {};
-                for (const { name, list } of this.groups) {
-                    tempGroups[name] = list;
+            const parsed = JSON.parse(decoded);
+            if (parsed instanceof Array && parsed.length > 0) {
+                for (const { name, tabGroups, activeTabGroup } of parsed) {
+                    this.groups[name] = deserializeTabGroups(tabGroups, activeTabGroup);
                 }
-                this.groups = tempGroups;
             }
-        } catch {
+        } catch (err) {
+            console.error(err);
             console.log('Was not able to parse decoded Base64 as Json');
         } // Base64 decoded was not valid
     }
 
-    private _onDidChangeTreeData = new vscode.EventEmitter<TreeItem | undefined>();
+    private _onDidChangeTreeData = new EventEmitter<CustomTreeItem | undefined>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-    getTreeItem(element: TreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        const item = new vscode.TreeItem(
+    getTreeItem(element: CustomTreeItem): TreeItem | Thenable<TreeItem> {
+        const item = new TreeItem(
             (element.getType() === TreeItemType.SPLIT ? element as SplitTreeItem : element).getText(),
             element.getCollapsibleState(),
         );
         item.contextValue = element.getType();
         if (element.getType() === TreeItemType.FILE) {
-            item.tooltip = element.getData();
+            item.tooltip = element.getText();
             item.command = {
                 command: Commands.OpenFileFromView,
                 title: 'Open file',
@@ -150,41 +161,33 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         return item;
     }
 
-    getParent(element: TreeItem): vscode.ProviderResult<TreeItem> {
+    getParent(element: CustomTreeItem): ProviderResult<CustomTreeItem> {
         return element.getParent();
     }
 
-    getChildren(element?: TreeItem): vscode.ProviderResult<TreeItem[]> {
+    getChildren(element?: CustomTreeItem): ProviderResult<CustomTreeItem[]> {
         if (element === undefined) {
             return Object.keys(this.groups).sort((a, b) => a.localeCompare(b)).map(
-                name => new GroupTreeItem(name, this._tracking === name));
+                name => new GroupTreeItem(this.groups[name], name, this._tracking === name));
         }
 
         if (element.getType() === TreeItemType.GROUP) {
             const name = (element as GroupTreeItem).getName();
             const group = this.groups[name];
-            if (group === undefined) { return []; }
-
-            return group.reduce((prev, curr) => {
+            return group.all.reduce((prev, curr) => {
                 if (prev.find(item =>
                     item.getType() === TreeItemType.SPLIT &&
                     (item as SplitTreeItem).getViewColumn() === curr.viewColumn) === undefined) {
-                    prev.push(new SplitTreeItem(name, element, curr.viewColumn));
+                    prev.push(new SplitTreeItem(curr, name, element));
                 }
                 return prev;
-            },
-                [] as TreeItem[]);
+            }, [] as CustomTreeItem[]);
         }
 
         if (element.getType() === TreeItemType.SPLIT) {
             const e = element as SplitTreeItem;
-            const group = this.groups[e.getGroupName()];
-            if (group === undefined) { return []; }
-
-            return group.filter(editor => editor.viewColumn === e.getViewColumn()).map(editor => new TreeItem(TreeItemType.FILE,
-                editor.document.fileName,
-                element
-            ));
+            const group = e.getData() as TabGroup;
+            return group.tabs.map(file => new CustomTreeItem(TreeItemType.FILE, file, { parent: e }));
         }
     }
 
@@ -205,17 +208,17 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         return undefined;
     }
 
-    add(name: string, list: Editor[]) {
+    add(name: string, list: TabGroups) {
         this.undoStack.push(cloneDeep(this.groups));
-        this.groups[name] = list;
-        this.saveToSettings();
+        this.groups[name] = cloneDeep(list);
+        this.save();
     }
 
     remove(name: string, updating = false) {
         if (this.groups[name] === undefined) return false;
         if (!updating) this.undoStack.push(cloneDeep(this.groups));
         unset(this.groups, name);
-        this.saveToSettings();
+        this.save();
         return true;
     }
 
@@ -223,37 +226,41 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         this.undoStack.push(cloneDeep(this.groups));
         set(this.groups, newName, this.groups[oldName]);
         unset(this.groups, oldName);
-        this.saveToSettings();
+        this.save();
     }
 
-    removeFile(name: string, fileItem: TreeItem) {
-        const group = this.groups[name];
-        if (!group) { return; }
+    removeFile(fileItem: CustomTreeItem) {
+        const split = fileItem.getParent() as SplitTreeItem;
+        const group = split?.getParent() as GroupTreeItem;
+        const groupName = group?.getText();
+        if (!groupName || !split || !group) return;
+        const tabGroups = this.groups[groupName];
+        if (!tabGroups) return;
 
+        const serialized = serializeTabGroups(tabGroups, { tabs: [fileItem.getData() as Tab] });
         this.undoStack.push(cloneDeep(this.groups));
-        this.groups[name] = group.filter(editor => !(
-            editor.document.fileName === fileItem.getData() &&
-            editor.viewColumn === (fileItem.getParent() as SplitTreeItem).getViewColumn()
-        ));
-        this.saveToSettings();
+        this.groups[groupName] = deserializeTabGroups(serialized, tabGroups.activeTabGroup.viewColumn);
+        this.save();
     }
 
     undo() {
         const groups = this.undoStack.pop();
-        if (groups !== undefined) {
+        if (groups) {
             this.groups = groups;
-            this.saveToSettings();
+            this.save();
         } else {
-            vscode.window.showInformationMessage('Nothing to undo');
+            window.showInformationMessage('Nothing to undo');
         }
     }
 
-    removeViewColumn(name: string, viewColumn?: vscode.ViewColumn) {
-        const group = this.groups[name];
-        if (!group) { return; }
+    removeViewColumn(name: string, viewColumn: ViewColumn) {
+        const tabGroups = this.groups[name];
+        if (!tabGroups) { return; }
 
-        this.groups[name] = group.filter(editor => editor.viewColumn !== viewColumn);
-        this.saveToSettings();
+        const serialized = serializeTabGroups(tabGroups, { viewColumns: [viewColumn] });
+        this.undoStack.push(cloneDeep(this.groups));
+        this.groups[name] = deserializeTabGroups(serialized, tabGroups.activeTabGroup.viewColumn);
+        this.save();
     }
 
     get(name: string) {
@@ -272,10 +279,34 @@ export class Groups implements vscode.TreeDataProvider<TreeItem>{
         return `Group ${this.length() + 1}`;
     }
 
-    private saveToSettings() {
-        const global = vscode.workspace.getConfiguration().get(Configurations.SaveGlobally, false);
-        const encoded = Buffer.from(JSON.stringify(this.groups)).toString('base64');
-        vscode.workspace.getConfiguration().update(Configurations.Groups, encoded, global);
+    private save() {
+        const global = workspace.getConfiguration().get(Configurations.SaveGlobally, false);
+        const encoded = Buffer.from(this.serialize()).toString('base64');
+        if (global) {
+            this.globalState.update('tab-groups', encoded);
+        } else {
+            this.workspaceState.update('tab-groups', encoded);
+        }
         this._onDidChangeTreeData.fire(undefined);
+    }
+
+    private serialize() {
+        const serialized = [];
+        for (const name in this.groups) {
+            const tabGroups = this.groups[name];
+            let activeTabGroup;
+            for (let i = 0; i < tabGroups.all.length; i++) {
+                const tabGroup = tabGroups.all[i];
+                if (tabGroup.isActive) {
+                    activeTabGroup = i;
+                }
+            }
+            // TabGroups
+            serialized.push({
+                name, activeTabGroup,
+                tabGroups: serializeTabGroups(tabGroups),
+            });
+        }
+        return JSON.stringify(serialized);
     }
 }

@@ -215,7 +215,7 @@ function initGitBranchGroups(git: API, option: GitBranchGroups) {
 	latestBranch = repo.state.HEAD?.name;
 
 	return repo.state.onDidChange(async () => {
-		if (repo.state.HEAD?.name !== latestBranch) {
+		if (latestBranch && repo.state.HEAD?.name !== latestBranch) {
 			if (latestBranch) {
 				await updateGroup(Groups.branchGroupName(latestBranch), true);
 			}

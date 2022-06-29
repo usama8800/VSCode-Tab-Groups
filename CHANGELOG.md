@@ -1,5 +1,9 @@
 # Change Log
 
+## 2.0.1
+
+- Fix tabs closing on startup
+
 ## 2.0.0
 
 - Use the new `window.tabGroups` api

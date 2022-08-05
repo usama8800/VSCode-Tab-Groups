@@ -1,5 +1,9 @@
 # Change Log
 
+## 2.1.0
+
+- Only apply `GitBranchGroups.SaveAndRestore` when moving to a branch with an already saved tab group
+
 ## 2.0.1
 
 - Fix tabs closing on startup

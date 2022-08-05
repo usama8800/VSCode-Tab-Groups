@@ -220,9 +220,22 @@ function initGitBranchGroups(git: API, option: GitBranchGroups) {
 				await updateGroup(Groups.branchGroupName(latestBranch), true);
 			}
 			if (option === GitBranchGroups.SaveAndRestore) {
-				await commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
 				if (repo.state.HEAD?.name) {
-					await restoreGroup(Groups.branchGroupName(repo.state.HEAD?.name));
+					const groupName = Groups.branchGroupName(repo.state.HEAD?.name);
+					const group = groups.get(groupName);
+					if (group !== undefined) {
+						let groupIsEmpty = true;
+						for (const tabGroup of group.all) {
+							if (tabGroup.tabs.length > 0) {
+								groupIsEmpty = false;
+								break;
+							}
+						}
+						if (!groupIsEmpty) {
+				await commands.executeCommand(BuiltInCommands.CloseAllEditorGroups);
+							await restoreGroup(groupName);
+						}
+					}
 				}
 			}
 		}

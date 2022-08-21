@@ -1,5 +1,9 @@
 # Change Log
 
+## 2.1.1
+
+- Prefix branch names with root folder
+
 ## 2.1.0
 
 - Only apply `GitBranchGroups.SaveAndRestore` when moving to a branch with an already saved tab group

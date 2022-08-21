@@ -7,7 +7,7 @@
 		"type": "git",
 		"url": "https://github.com/usama8800/VSCode-Tab-Groups.git"
 	},
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"main": "./out/extension.js",
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

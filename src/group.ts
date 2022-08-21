@@ -191,8 +191,8 @@ export class Groups implements TreeDataProvider<CustomTreeItem>{
         }
     }
 
-    static branchGroupName(branch: string) {
-        return `Branch: ${branch}`;
+    static branchGroupName(root: string, branch: string) {
+        return `${root}: ${branch}`;
     }
 
     get tracking(): string {

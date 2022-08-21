@@ -216,12 +216,13 @@ function initGitBranchGroups(git: API, option: GitBranchGroups) {
 
 	return repo.state.onDidChange(async () => {
 		if (latestBranch && repo.state.HEAD?.name !== latestBranch) {
+			const root = path.basename(repo.rootUri.path);
 			if (latestBranch) {
-				await updateGroup(Groups.branchGroupName(latestBranch), true);
+				await updateGroup(Groups.branchGroupName(root, latestBranch), true);
 			}
 			if (option === GitBranchGroups.SaveAndRestore) {
 				if (repo.state.HEAD?.name) {
-					const groupName = Groups.branchGroupName(repo.state.HEAD?.name);
+					const groupName = Groups.branchGroupName(root, repo.state.HEAD?.name);
 					const group = groups.get(groupName);
 					if (group !== undefined) {
 						let groupIsEmpty = true;
